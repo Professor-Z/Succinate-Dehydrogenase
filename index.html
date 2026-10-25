@@ -1059,6 +1059,8 @@
     });
     const redOrbitalMat = makeOrbitalMat(0xef4444);
     const blueOrbitalMat = makeOrbitalMat(0x3b82f6);
+    redOrbitalMat.emissive.set(0x5a0f0f); blueOrbitalMat.emissive.set(0x0f2a66);      // a little self-light so they stay vivid inside the dark pocket
+    redOrbitalMat.depthTest = false; blueOrbitalMat.depthTest = false;                  // always visible, even behind the enzyme's surface
     function createPOrbitalLobeGeometry() {
         const pts = [], L = 1.4, R = 0.5, yc = L - R, Nn = 60, Nc = 40;
         for (let i = 0; i <= Nn; i++) { const t = i / Nn; pts.push(new THREE.Vector2(R * Math.sin(t * Math.PI / 2), t * yc)); }
@@ -1068,8 +1070,8 @@
     const lobeGeo = createPOrbitalLobeGeometry();
     function makePOrbital() {
         const g = new THREE.Group();
-        const up = new THREE.Mesh(lobeGeo, redOrbitalMat); up.renderOrder = 12;
-        const dn = new THREE.Mesh(lobeGeo, blueOrbitalMat); dn.rotation.x = Math.PI; dn.renderOrder = 12;
+        const up = new THREE.Mesh(lobeGeo, redOrbitalMat); up.renderOrder = 58;   // after the protein surfaces, so they aren't washed out
+        const dn = new THREE.Mesh(lobeGeo, blueOrbitalMat); dn.rotation.x = Math.PI; dn.renderOrder = 58;
         g.add(up); g.add(dn); scene.add(g); return g;
     }
     const pOrb = { C2: makePOrbital(), C3: makePOrbital() };
