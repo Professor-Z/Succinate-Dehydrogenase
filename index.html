@@ -1,0 +1,1490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SDH anti-Elimination</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #1a202c; color: #fff;
+        font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    #canvas-wrap { position: fixed; inset: 0; }
+    .glass-panel { background: rgba(30,41,59,0.86); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+        border: 1px solid rgba(255,255,255,0.10); border-radius: 0.75rem; box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+    .interactive { pointer-events: auto; }
+
+    /* ---------- info panel (top left) ---------- */
+    .drawer { position: fixed; top: 16px; z-index: 10; display: flex; align-items: flex-start; pointer-events: none;
+        transition: transform 0.42s cubic-bezier(.4,0,.2,1); }
+    .drawer > * { pointer-events: auto; }
+    .drawer.left { left: 16px; }
+    .drawer.right { right: 16px; }
+    .drawer.left.collapsed { transform: translateX(calc(-100% + 18px)); }     /* only the 34px tab stays on screen */
+    .drawer.right.collapsed { transform: translateX(calc(100% - 18px)); }
+    /* tabs styled like the E2 simulation's CONTROLS (green) and ZOOM (blue) tabs */
+    .drawer-tab { width: 34px; padding: 18px 0; margin-top: 12px; cursor: pointer; font: inherit; font-size: 13px; font-weight: 800;
+        letter-spacing: 0.2em; white-space: nowrap; writing-mode: vertical-rl; transform: rotate(180deg);     /* reads bottom → top */
+        border: none; user-select: none; transition: filter 0.15s; }
+    .drawer-tab:hover { filter: brightness(1.12); }
+    .drawer.left .drawer-tab { border-radius: 12px 0 0 12px;                                             /* (rotated 180°) */
+        background: #2f80ff; color: #ffffff; box-shadow: 0 0 14px rgba(47,128,255,0.75), 0 0 30px rgba(47,128,255,0.35); }
+    .drawer.right .drawer-tab { border-radius: 0 12px 12px 0;
+        background: #22e55e; color: #04290f; box-shadow: 0 0 14px rgba(34,229,94,0.75), 0 0 30px rgba(34,229,94,0.35); }
+    #rxn-box { margin: 0.1rem 0 0.7rem; padding: 0.45rem 0.5rem 0.35rem; border-radius: 0.5rem; background: rgba(15,23,42,0.7); border-left: 3px solid #2f80ff; }
+    .rxn-head { font-size: 0.66rem; font-weight: 800; letter-spacing: 0.14em; color: #60a5fa; margin-bottom: 0.1rem; }
+    #rxn-svg { display: block; width: 100%; height: auto; }
+    .rxn-note { font-size: 0.66rem; color: #94a3b8; margin-top: 0.1rem; }
+    #info { width: 23rem; padding: 1rem 1.1rem; max-height: calc(100vh - 150px); overflow: auto; }
+    #info h1 { margin: 0 0 0.1rem; font-size: 1.125rem; line-height: 1.25; font-weight: 700; color: #60a5fa; }
+    #info .sub { font-size: 0.75rem; font-weight: 600; color: #9ca3af; margin-bottom: 0.6rem; }
+    .row { display: flex; justify-content: space-between; gap: 0.75rem; font-size: 0.8rem; padding: 0.22rem 0; border-bottom: 1px solid #374151; }
+    .row:last-child { border-bottom: none; }
+    .row .k { color: #9ca3af; white-space: nowrap; }
+    .row .v { font-weight: 600; text-align: right; }
+    #step-box { margin-top: 0.75rem; padding: 0.6rem 0.7rem; border-radius: 0.5rem; background: rgba(15,23,42,0.7);
+        border-left: 3px solid #4ade80; font-size: 0.8rem; line-height: 1.42; min-height: 4.6rem; }
+    #step-title { font-weight: 800; color: #4ade80; font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.2rem; }
+    #step-box.warn { border-left-color: #fb923c; }
+    #step-box.warn #step-title { color: #fb923c; }
+    .hint { margin-top: 0.6rem; font-size: 0.7rem; color: #6b7280; line-height: 1.35; }
+    .hint b { color: #4ade80; font-weight: 700; }
+
+    /* ---------- controls (top right) ---------- */
+    #controls { width: 17rem; padding: 0.9rem 1rem; max-height: calc(100vh - 150px); overflow: auto; }
+    .mini-hint { font-size: 0.68rem; color: #94a3b8; line-height: 1.35; margin: -0.35rem 0 0.8rem; }
+    .sec { font-size: 0.66rem; font-weight: 800; letter-spacing: 0.14em; color: #94a3b8; margin: 0.15rem 0 0.4rem; }
+    .sec + .btn-row, .btn-row + .sec { margin-top: 0; }
+    .btn-row { display: grid; gap: 0.35rem; margin-bottom: 0.8rem; }
+    .btn-row.two { grid-template-columns: 1fr 1fr; }
+    .btn-row.three { grid-template-columns: 1fr 1fr 1fr; }
+    /* buttons styled like the E2 simulation's .cp-btn: gray = off, blue = selected view, green/red = on/off, purple = p orbitals */
+    .btn { font: inherit; font-size: 0.75rem; line-height: 1rem; font-weight: 700; padding: 0.4rem 0.5rem; border-radius: 0.375rem; white-space: nowrap;
+        border: none; background: #374151; color: #fff; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,.4); transition: background-color .15s; }
+    .btn:hover { background: #4b5563; }
+    .btn.active { background: #2563eb; }
+    .btn.active:hover { background: #3b82f6; }
+    .btn.tg { background: #dc2626; }
+    .btn.tg:hover { background: #ef4444; }
+    .btn.tg.active { background: #16a34a; }
+    .btn.tg.active:hover { background: #22c55e; }
+    .btn.orb { background: transparent; box-shadow: inset 0 0 0 1px #a855f7; color: #d8b4fe; }
+    .btn.orb:hover { background: #9333ea; color: #fff; }
+    .btn.orb.active { background: #9333ea; color: #fff; }
+    .btn.orb.active:hover { background: #4b5563; }
+    .btn.conf { white-space: normal; }
+    .slider-row { margin-bottom: 0.65rem; }
+    .slider-row .lbl { display: flex; justify-content: space-between; font-size: 0.74rem; color: #cbd5e1; margin-bottom: 0.25rem; }
+    .slider-row .lbl span:last-child { color: #a5b4fc; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+    input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; background: transparent; height: 18px; cursor: pointer; }
+    input[type=range]::-webkit-slider-runnable-track { height: 4px; background: #4b5563; border-radius: 2px; }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: #3b82f6; margin-top: -6px; box-shadow: 0 0 6px rgba(59,130,246,0.7); }
+    input[type=range]::-moz-range-track { height: 4px; background: #4b5563; border-radius: 2px; }
+    input[type=range]::-moz-range-thumb { height: 16px; width: 16px; border: none; border-radius: 50%; background: #3b82f6; }
+    input.enz::-webkit-slider-thumb { background: #a5b4fc; box-shadow: 0 0 6px rgba(165,180,252,0.7); }
+    input.enz::-moz-range-thumb { background: #a5b4fc; }
+
+    /* ---------- bottom panel (reaction progress) ---------- */
+    #bottom-panel { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); width: min(44rem, calc(100vw - 32px)); padding: 0.8rem 1.1rem 0.7rem; z-index: 10; }
+    #bottom-top { display: flex; align-items: center; gap: 0.75rem; }
+    #play-btn, #reset-btn { flex: none; width: 2.3rem; height: 2.3rem; border-radius: 50%; border: 1px solid #60a5fa; background: #2563eb; color: #fff; font-size: 0.95rem; cursor: pointer; display: grid; place-items: center; }
+    #reset-btn { background: #1e293b; border-color: #475569; color: #cbd5e1; font-size: 1.05rem; }
+    #progress-wrap { flex: 1; position: relative; }
+    #ticks { position: relative; height: 1.1rem; margin-top: 0.15rem; font-size: 0.72rem; color: #9ca3af; font-weight: 600; }
+    #ticks span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; transition: color 0.2s; }
+    #ticks span.on { color: #fff; }
+    #ticks span:first-child { transform: none; }
+    #ticks span:last-child { transform: translateX(-100%); }
+
+    /* ---------- floating 3D labels ---------- */
+    #labels { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+    .flab { position: absolute; left: 0; top: 0; white-space: nowrap; font-size: 12px; font-weight: 700; color: #e2e8f0;
+        text-shadow: 0 1px 4px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.9); transform: translate(-50%, -50%); will-change: transform; }
+    .flab.res { font-size: 11px; color: #c7d2fe; letter-spacing: 0.03em; }
+    .flab.res.base { color: #fdba74; }
+    .flab.res.fad { color: #fde68a; }
+    .flab.small { font-size: 10.5px; color: #cbd5e1; }
+    .flab.prod { font-size: 36px; font-weight: 800; color: #4ade80; letter-spacing: 0.14em; text-shadow: 0 0 8px rgba(74,222,128,0.6), 0 1px 4px rgba(0,0,0,0.95); }
+    .flab.prod.z { color: #fb923c; text-shadow: 0 0 8px rgba(251,146,60,0.6), 0 1px 4px rgba(0,0,0,0.95); }
+    .flab.bad { color: #ff2b2b; font-size: 24px; font-weight: 800; letter-spacing: 0.08em; text-shadow: 0 0 10px rgba(255,43,43,0.85), 0 0 22px rgba(255,43,43,0.45), 0 1px 4px rgba(0,0,0,0.95); }
+    .flab.hl { color: #fde047; font-size: 13px; font-weight: 800; }
+    .flab.succ { color: #facc15; font-size: 15px; font-weight: 800; letter-spacing: 0.1em; text-shadow: 0 0 8px rgba(250,204,21,0.75), 0 1px 4px rgba(0,0,0,0.95); }
+    .flab.fc { width: 28px; height: 28px; padding: 0; line-height: 0; text-shadow: none; }
+    .flab.fc svg { display: block; width: 28px; height: 28px; overflow: visible; }
+    .flab.fc.neg { color: #f87171; filter: drop-shadow(0 0 4px rgba(248,113,113,0.8)); }
+    .flab.fc.pos { color: #60a5fa; filter: drop-shadow(0 0 4px rgba(96,165,250,0.8)); }
+    .flab.pc { font-size: 18px; font-weight: 800; font-style: italic; letter-spacing: 0.02em; }
+    .flab.pc.neg { color: #f87171; text-shadow: 0 0 5px rgba(248,113,113,0.6), 0 1px 3px rgba(0,0,0,0.95); }
+    .flab.pc.pos { color: #60a5fa; text-shadow: 0 0 5px rgba(96,165,250,0.6), 0 1px 3px rgba(0,0,0,0.95); }
+    #reactive-label { position: fixed; left: 0; top: 0; z-index: 6; pointer-events: none; white-space: nowrap; opacity: 0; transform: translate(-50%, 0);
+        font-weight: 800; font-size: clamp(16px, 4.2vw, 36px); letter-spacing: 0.14em; color: #facc15; text-align: center;
+        text-shadow: 0 0 6px rgba(250,204,21,0.95), 0 0 16px rgba(250,204,21,0.75), 0 0 32px rgba(250,204,21,0.5); }
+    #reactive-label small { display: block; font-size: 11px; letter-spacing: 0.12em; margin-top: 2px; }
+    #reactive-label.gauche { color: #fb923c; text-shadow: 0 0 6px rgba(251,146,60,0.95), 0 0 16px rgba(251,146,60,0.7), 0 0 30px rgba(251,146,60,0.45); }
+
+    @media (max-width: 900px) {
+        #info { width: min(23rem, calc(100vw - 70px)); max-height: 60vh; }
+        #controls { width: 15rem; max-height: 60vh; }
+    }
+</style>
+</head>
+<body>
+<div id="canvas-wrap"></div>
+<div id="labels"></div>
+<div id="reactive-label">REACTIVE CONFORMATION</div>
+
+<!-- ======================= INFO PANEL ======================= -->
+<div id="info-drawer" class="drawer left collapsed">
+<div id="info" class="glass-panel interactive">
+    <h1>Succinate Dehydrogenase</h1>
+    <div class="sub">Enzymatic <i>anti</i>-elimination: succinate → fumarate (Complex II, FAD-dependent)</div>
+    <div id="rxn-box"><div class="rxn-head">REACTION</div>
+<svg id="rxn-svg" viewBox="0 0 316 104" xmlns="http://www.w3.org/2000/svg" font-family="Inter, system-ui, sans-serif">
+<line x1="24.0" y1="52.0" x2="43.1" y2="41.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
+<line x1="43.1" y1="41.0" x2="62.1" y2="52.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
+<line x1="62.1" y1="52.0" x2="81.2" y2="41.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
+<line x1="24.0" y1="52.0" x2="10.1" y2="44.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/><line x1="23.2" y1="47.4" x2="11.9" y2="40.9" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
+<line x1="24.0" y1="52.0" x2="24.0" y2="68.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
+<line x1="81.2" y1="41.0" x2="81.2" y2="25.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/><line x1="77.6" y1="38.0" x2="77.6" y2="25.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
+<line x1="81.2" y1="41.0" x2="95.0" y2="49.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
+<text x="4.9" y="45.2" fill="#f87171" font-size="12" font-weight="700" text-anchor="middle">O</text>
+<text x="81.2" y="23.2" fill="#f87171" font-size="12" font-weight="700" text-anchor="middle">O</text>
+<text x="25.0" y="78.2" fill="#f87171" font-size="12" font-weight="700" text-anchor="middle">O<tspan dy="-5" font-size="9">−</tspan></text>
+<text x="103.2" y="56.2" fill="#f87171" font-size="12" font-weight="700" text-anchor="middle">O<tspan dy="-5" font-size="9">−</tspan></text>
+<polygon points="43.1,41.0 40.5,28.0 45.7,28.0" fill="#facc15"/>
+<line x1="60.9" y1="54.2" x2="63.3" y2="54.2" stroke="#facc15" stroke-width="1.2"/>
+<line x1="60.6" y1="56.3" x2="63.6" y2="56.3" stroke="#facc15" stroke-width="1.2"/>
+<line x1="60.2" y1="58.5" x2="64.0" y2="58.5" stroke="#facc15" stroke-width="1.2"/>
+<line x1="59.8" y1="60.7" x2="64.4" y2="60.7" stroke="#facc15" stroke-width="1.2"/>
+<line x1="59.5" y1="62.8" x2="64.7" y2="62.8" stroke="#facc15" stroke-width="1.2"/>
+<text x="43.1" y="27.2" fill="#facc15" font-size="11" font-weight="700" text-anchor="middle">H</text>
+<text x="62.1" y="75.2" fill="#facc15" font-size="11" font-weight="700" text-anchor="middle">H</text>
+<line x1="122" y1="42" x2="179" y2="42" stroke="#e5e7eb" stroke-width="1.8"/><polygon points="186,42 177,38 177,46" fill="#e5e7eb"/><text x="154" y="35" fill="#60a5fa" font-size="10.5" font-weight="800" text-anchor="middle">SDH</text><text x="154" y="56" fill="#fde68a" font-size="9.5" font-weight="700" text-anchor="middle">FAD → FADH<tspan dy="2.5" font-size="7">2</tspan></text>
+<line x1="224.0" y1="52.0" x2="243.1" y2="41.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
+<line x1="245.7" y1="42.5" x2="259.5" y2="50.5" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/><line x1="243.9" y1="45.6" x2="257.7" y2="53.6" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
+<line x1="262.1" y1="52.0" x2="281.2" y2="41.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
+<line x1="224.0" y1="52.0" x2="210.1" y2="44.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/><line x1="223.2" y1="47.4" x2="211.9" y2="40.9" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
+<line x1="224.0" y1="52.0" x2="224.0" y2="68.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
+<line x1="281.2" y1="41.0" x2="281.2" y2="25.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/><line x1="277.6" y1="38.0" x2="277.6" y2="25.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
+<line x1="281.2" y1="41.0" x2="295.0" y2="49.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
+<text x="204.9" y="45.2" fill="#f87171" font-size="12" font-weight="700" text-anchor="middle">O</text>
+<text x="281.2" y="23.2" fill="#f87171" font-size="12" font-weight="700" text-anchor="middle">O</text>
+<text x="225.0" y="78.2" fill="#f87171" font-size="12" font-weight="700" text-anchor="middle">O<tspan dy="-5" font-size="9">−</tspan></text>
+<text x="303.2" y="56.2" fill="#f87171" font-size="12" font-weight="700" text-anchor="middle">O<tspan dy="-5" font-size="9">−</tspan></text>
+<text x="52.6" y="98" fill="#9ca3af" font-size="10" font-weight="600" text-anchor="middle">succinate</text><text x="252.6" y="98" fill="#9ca3af" font-size="10" font-weight="600" text-anchor="middle">(<tspan font-style="italic">E</tspan>)-fumarate</text>
+</svg>
+    <div class="rxn-note">Yellow H's: the anti-periplanar pair removed (H⁻ to FAD, H⁺ to the base)</div></div>
+    <div class="row"><span class="k">Enzyme:</span><span class="v">Succinate dehydrogenase</span></div>
+    <div class="row"><span class="k">Substrate:</span><span class="v">Succinate (⁻O₂C–CH₂–CH₂–CO₂⁻)</span></div>
+    <div class="row"><span class="k">H⁻ acceptor:</span><span class="v">FAD (N5) → FADH₂</span></div>
+    <div class="row"><span class="k">H⁺ acceptor:</span><span class="v">Active-site base (Arg)</span></div>
+    <div class="row"><span class="k">Product:</span><span class="v" id="prod-row" style="color:#4ade80">(<i>E</i>)-Fumarate</span></div>
+    <div class="row"><span class="k">O₂C–C2–C3–CO₂ dihedral:</span><span class="v" id="dih-c">180°</span></div>
+    <div class="row"><span class="k">H–C2–C3–H (H⁻ / H⁺):</span><span class="v" id="dih-h">180°</span></div>
+    <div id="step-box"><div id="step-title">Step</div><div id="step-text"></div></div>
+    <div class="hint"><b>Drag</b> to rotate the view · <b>scroll</b> to zoom · <b>space</b> to play/pause</div>
+</div>
+<button class="drawer-tab" data-drawer="info-drawer">REACTION INFO</button>
+</div>
+
+<!-- ======================= CONTROLS ======================= -->
+<div id="controls-drawer" class="drawer right collapsed">
+<button class="drawer-tab" data-drawer="controls-drawer">CONTROLS</button>
+<div id="controls" class="glass-panel interactive">
+    <div class="sec">C2–C3 CONFORMATION</div>
+    <div class="btn-row two">
+        <button class="btn conf" id="mode-anti" title="The conformer SDH binds: carboxylates anti (180°)">ANTI<br><span style="font-weight:600;opacity:.8">→ FUMARATE</span></button>
+        <button class="btn conf" id="mode-gauche" title="Hypothetical: carboxylates gauche (60°)">GAUCHE<br><span style="font-weight:600;opacity:.8">→ MALEATE</span></button>
+    </div>
+    <div class="mini-hint">Or drag the C3 end (its CO₂⁻ or either H) to turn it about the C2–C3 bond.</div>
+    <div class="sec">VIEW</div>
+    <div class="btn-row two">
+        <button class="btn" id="view-front">FRONT</button>
+        <button class="btn" id="view-newman">NEWMAN</button>
+    </div>
+    <div class="sec">SHOW</div>
+    <div class="btn-row two">
+        <button class="btn tg" id="tg-labels">RESIDUES</button>
+        <button class="btn tg active" id="tg-charges" title="Formal charges (circled) and partial charges (δ+ / δ−)">CHARGES</button>
+        <button class="btn tg" id="tg-arrows">ARROWS</button>
+        <button class="btn orb" id="tg-orbitals">P ORBITALS</button>
+    </div>
+    <div class="sec">ENZYME</div>
+    <div class="slider-row" style="margin-bottom:0">
+        <div class="lbl"><span>Enzyme opacity</span><span id="enz-val">100%</span></div>
+        <input type="range" class="enz" id="enz-slider" min="0" max="100" value="100">
+    </div>
+</div>
+</div>
+
+<!-- ======================= REACTION PROGRESS ======================= -->
+<div id="bottom-panel" class="glass-panel interactive">
+    <div id="bottom-top">
+        <button id="play-btn" title="Play / pause (space)">▶</button>
+        <button id="reset-btn" title="Back to the start">↺</button>
+        <div id="progress-wrap">
+            <input type="range" id="progress" min="0" max="1000" value="0">
+            <div id="ticks">
+                <span style="left:0%">Unbound</span>
+                <span style="left:34%">Bound (E·S)</span>
+                <span style="left:67.5%">Transition State</span>
+                <span style="left:100%">Products</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(() => {
+    // =====================================================================
+    //  Helpers
+    // =====================================================================
+    const deg = Math.PI / 180;
+    const V = (x, y, z) => new THREE.Vector3(x, y, z);
+    const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+    const lerp = (a, b, t) => a + (b - a) * t;
+    const smooth = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
+    const wrap = (a) => ((a + 180) % 360 + 360) % 360 - 180;
+    const X = V(1, 0, 0), UP = V(0, 1, 0);
+    // Direction perpendicular to the C2–C3 (x) axis at angle th about that axis: 0° = toward viewer (+z), 90° = up (+y)
+    const perp = (th) => V(0, Math.sin(th * deg), Math.cos(th * deg));
+    function dirFrom(axis, thDeg, angDeg) {
+        const a = angDeg * deg;
+        return axis.clone().multiplyScalar(Math.cos(a)).add(perp(thDeg).multiplyScalar(Math.sin(a)));
+    }
+    function perpPart(v, axis) { const a = axis.clone().normalize(); return v.clone().addScaledVector(a, -v.dot(a)); }
+    function dihedral(a, b, c, d) {
+        const b0 = a.clone().sub(b), b1 = c.clone().sub(b).normalize(), b2 = d.clone().sub(c);
+        const v = perpPart(b0, b1), w = perpPart(b2, b1);
+        const x = v.dot(w), y = new THREE.Vector3().crossVectors(b1, v).dot(w);
+        return Math.atan2(y, x) / deg;
+    }
+
+    // =====================================================================
+    //  Renderer / scene / camera
+    // =====================================================================
+    const wrapEl = document.getElementById('canvas-wrap');
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(0x1a202c, 1);
+    wrapEl.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 300);
+    // Direction of the substrate channel (from the active site out to solvent): chosen as the most open path between the residues
+    const OPEN_DIR = V(-0.48, -0.31, 0.82).normalize();
+    const VIEWS = {
+        front:    { target: V(0, 0, 0), dir: V(-0.777, 0.035, 0.629).normalize(), dist: 29 },   // clamps above/below, FAD left, base right; all four C2/C3 H's visible
+        newman:   { target: V(0, 0, 0), dir: V(-1, 0, 0.001).normalize(), dist: 25 },          // looking down C2 → C3
+        overview: { target: V(-10.23, 3.72, 0.96), dir: V(0.4685, 0.5479, 0.693).normalize(),   // matches the screenshot angle
+                    get dist() { return window.innerWidth < window.innerHeight ? 165 : 140; } }
+    };
+    camera.position.copy(VIEWS.overview.target).addScaledVector(VIEWS.overview.dir, VIEWS.overview.dist);
+    scene.add(camera);
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true; controls.dampingFactor = 0.09; controls.enablePan = false;
+    controls.rotateSpeed = 0.7; controls.minDistance = 6; controls.maxDistance = 180;
+    controls.target.copy(VIEWS.overview.target);
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.48));
+    scene.add(new THREE.HemisphereLight(0xdbeafe, 0x1e293b, 0.25));
+    const keyLight = new THREE.DirectionalLight(0xffffff, 0.8); keyLight.position.set(6, 9, 6); camera.add(keyLight);
+    const fillLight = new THREE.DirectionalLight(0xc7d2fe, 0.3); fillLight.position.set(-8, -4, 2); camera.add(fillLight);
+
+    // =====================================================================
+    //  Atoms & bonds
+    // =====================================================================
+    const ELEM = {
+        C: { c: 0x6b7280, r: 0.36 }, H: { c: 0xf1f5f9, r: 0.22 },
+        O: { c: 0xef4444, r: 0.34 }, N: { c: 0x3b82f6, r: 0.34 }
+    };
+    const sphereGeo = new THREE.SphereGeometry(1, 32, 24);
+    const cylGeo = new THREE.CylinderGeometry(1, 1, 1, 14, 1, false);
+    const YELLOW = new THREE.Color(0xfacc15);
+
+    function makeAtom(el, opts = {}) {
+        const mat = new THREE.MeshStandardMaterial({ color: ELEM[el].c, roughness: 0.32, metalness: 0.05, transparent: true, opacity: 1 });
+        const mesh = new THREE.Mesh(sphereGeo, mat);
+        const r = ELEM[el].r * (opts.scale || 1);
+        mesh.scale.setScalar(r);
+        scene.add(mesh);
+        return { el, mesh, mat, r, base: null, res: null, alpha: 1 };
+    }
+    function setAtomAlpha(a, alpha) {
+        a.alpha = alpha;
+        a.mesh.visible = alpha > 0.01;
+        a.mat.opacity = alpha;
+        a.mat.depthWrite = alpha > 0.98;
+    }
+
+    function placeCyl(mesh, A, B, r) {
+        const d = B.clone().sub(A); const L = d.length();
+        if (L < 1e-6) { mesh.visible = false; return; }
+        mesh.position.copy(A).addScaledVector(d, 0.5);
+        mesh.quaternion.setFromUnitVectors(UP, d.multiplyScalar(1 / L));
+        mesh.scale.set(r, L, r);
+    }
+
+    const allBonds = [];
+    class Bond {
+        // order: 1 = solid, 0.5 = dashed (partial bond), 0 = absent
+        constructor(a, b, opts = {}) {
+            this.a = a; this.b = b;
+            this.r = opts.r || 0.1; this.order = opts.order != null ? opts.order : 1; this.vis = 1;
+            this.offsetFn = opts.offsetFn || null; this.nd = opts.dashes || 6;
+            this.shrink = opts.shrink || 0;           // trim the ends (Å) so dashes don't sit inside atoms
+            this.dots = !!opts.dots;                  // draw the partial bond as a row of round dots instead of dashes
+            this.dotR = opts.dotR || null; this.look = null;   // look = { solid, dots } set per frame for bonds that break/form
+            this.e2dash = !!opts.e2dash;              // E2-simulation dashes: 5 equal dashes and gaps spanning the whole bond
+            this.onTop = !!opts.onTop;                // never hidden by the protein surface
+            const color = opts.color != null ? opts.color : 0x9ca3af;
+            const emissive = opts.emissive != null ? opts.emissive : 0x000000;
+            this.solidMat = new THREE.MeshStandardMaterial({ color, emissive, roughness: 0.45, metalness: 0.05, transparent: true, opacity: 1 });
+            this.dashMat = this.solidMat.clone();
+            if (opts.dotCol != null) { this.dashMat.color.set(opts.dotCol); this.dashMat.emissive.set(0x3a3f48); }
+            if (this.e2dash) this.dashMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.45, metalness: 0.05, transparent: true, opacity: 1, depthTest: false, depthWrite: false });
+            this.solid = new THREE.Mesh(cylGeo, this.solidMat); scene.add(this.solid);
+            this.dash = [];
+            if (this.onTop) { this.dashMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 1, depthTest: false, depthWrite: false }); }
+            this.zap = !!opts.zap; this.baseCol = new THREE.Color(color); this.zapSeed = Math.random() * 10;
+            for (let i = 0; i < this.nd; i++) { const m = new THREE.Mesh(this.dots ? sphereGeo : cylGeo, this.zap ? this.dashMat.clone() : this.dashMat); if (this.onTop || this.e2dash) m.renderOrder = 60; scene.add(m); this.dash.push(m); }
+            allBonds.push(this);
+        }
+        update() {
+            const A = this.a.mesh.position.clone(), B = this.b.mesh.position.clone();
+            if (this.offsetFn) { const o = this.offsetFn(); if (o) { A.add(o); B.add(o); } }
+            const o = this.order, vis = this.vis * Math.min(this.a.alpha, this.b.alpha, 1) ;
+            let sA = clamp((o - 0.62) / 0.3, 0, 1) * vis;
+            let dA = clamp(1 - Math.abs(o - 0.5) / 0.4, 0, 1) * vis;
+            if (this.look) { sA = this.look.solid * vis; dA = this.look.dots * vis; }
+            // solid
+            this.solid.visible = sA > 0.01;
+            if (this.solid.visible) { placeCyl(this.solid, A, B, this.r); this.solidMat.opacity = sA; this.solidMat.depthWrite = sA > 0.98; }
+            // dashed
+            const showD = dA > 0.01;
+            const d = B.clone().sub(A); const L = d.length(); const u = d.clone().normalize();
+            const A2 = A.clone().addScaledVector(u, this.shrink), Lin = Math.max(0.01, L - 2 * this.shrink);
+            const per = Lin / this.nd;
+            for (let i = 0; i < this.nd; i++) {
+                const m = this.dash[i]; m.visible = showD;
+                if (!showD) continue;
+                if (this.dots) { m.position.copy(A2).addScaledVector(u, per * (i + 0.5)); m.scale.setScalar(this.dotR || this.r); continue; }
+                if (this.e2dash) {   // dashes run from surface to surface, never across the atoms themselves
+                    const ra = this.a.r + 0.06, rb = this.b.r + 0.06, A3 = A.clone().addScaledVector(u, ra), Ld = Math.max(0.05, L - ra - rb), dl = Ld / (2 * this.nd - 1);
+                    placeCyl(m, A3.clone().addScaledVector(u, 2 * i * dl), A3.clone().addScaledVector(u, (2 * i + 1) * dl), this.r); continue;
+                }
+                const c0 = A2.clone().addScaledVector(u, per * (i + 0.22)), c1 = A2.clone().addScaledVector(u, per * (i + 0.78));
+                placeCyl(m, c0, c1, this.r);
+            }
+            if (showD) { this.dashMat.opacity = this.e2dash ? 1 : dA; this.dashMat.depthWrite = false; }
+            if (showD && this.zap) {
+                const T = performance.now() / 1000, W = new THREE.Color(0xf0fff4);
+                this.dash.forEach((m, i) => {
+                    const wave = Math.pow(Math.max(0, Math.sin(T * 9 + this.zapSeed + i * 1.25)), 3);       // pulse running O → H (dash 0 is at the H end)
+                    const flick = 0.85 + 0.15 * Math.sin(T * 53 + i * 7.1 + this.zapSeed);                  // crackle
+                    m.material.opacity = dA * (0.45 + 0.55 * wave) * flick;
+                    m.material.color.copy(this.baseCol).lerp(W, 0.55 * wave);
+                    const sc = 1 + 0.6 * wave; m.scale.x *= sc; m.scale.z *= sc;
+                });
+            }
+        }
+    }
+
+    // Glow halo sprites (yellow, additive) for the anti-periplanar hydrogens
+    function makeGlowTexture() {
+        const c = document.createElement('canvas'); c.width = c.height = 128;
+        const g = c.getContext('2d'); const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+        grd.addColorStop(0, 'rgba(255,255,255,1)'); grd.addColorStop(0.25, 'rgba(255,255,255,0.7)');
+        grd.addColorStop(0.6, 'rgba(255,255,255,0.18)'); grd.addColorStop(1, 'rgba(255,255,255,0)');
+        g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+        const t = new THREE.CanvasTexture(c); return t;
+    }
+    const glowTex = makeGlowTexture();
+    function makeGlow(color, size) {
+        const mat = new THREE.SpriteMaterial({ map: glowTex, color, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false });
+        const sp = new THREE.Sprite(mat); sp.scale.setScalar(size); sp.renderOrder = 20; scene.add(sp); return sp;
+    }
+
+    // =====================================================================
+    //  Substrate geometry (local frame; C2–C3 along x, centred at origin)
+    //  θ (deg) = rotation about the C2–C3 axis: 0 = +z (toward viewer), 90 = +y (up)
+    // =====================================================================
+    const TH = {
+        anti:   { c2: { coo: 90, h: 330, L: 210 }, c3: { coo: 270, h: 150, L: 30 } },  // carboxylates 180° apart
+        gauche: { c2: { coo: 90, h: 330, L: 210 }, c3: { coo: 150, h: 270, L: 30 } }   // carboxylates 60° apart
+    };
+    // As C2/C3 rehybridise sp3 → sp2, the two substituents that stay swing 30° so they end up in the alkene plane
+    function remTheta(th, L, s) { const d = wrap(th - L); return L + d + (Math.sign(d) * 90 - d) * s; }
+
+    const C2_0 = V(-0.77, 0, 0), C3_0 = V(0.77, 0, 0);
+    const dL2 = dirFrom(X, 210, 109.47).normalize();                    // C2–H bond whose H leaves as hydride (to FAD N5)
+    const dL3 = dirFrom(X.clone().negate(), 30, 109.47).normalize();    // C3–H bond whose H leaves as a proton (to the base)
+    const N5pos = C2_0.clone().addScaledVector(dL2, 3.6);
+    const NBpos = C3_0.clone().addScaledVector(dL3, 3.6);
+    const PAXIS = perp(30);                                             // p-orbital axis (⊥ to the final alkene plane)
+
+    // α = rotation of the C3 end about C2–C3 (deg): 0 → carboxylates anti (180°), −120 → gauche (60°).
+    // The C3 hydrogen that points at the base (θ ≈ 30°) is always the one that leaves; when the two C3 H's swap that
+    // role mid-rotation they are identical spheres, so the swap is invisible.
+    const angDist30 = (a) => Math.abs(wrap(a - 30));
+    function c3Angles(al) {
+        const hA = 150 + al, hB = 30 + al, L = angDist30(hA) < angDist30(hB) ? hA : hB;
+        return { coo: 270 + al, h: L === hA ? hB : hA, L, dev: angDist30(L) };
+    }
+    function substrateGeom(s, mode) {
+        const al = typeof mode === 'number' ? mode : (mode === 'gauche' ? -120 : 0);
+        const c3 = c3Angles(al);
+        const T = { c2: TH.anti.c2, c3: { coo: c3.coo, h: c3.h, L: 30 } };
+        const d = lerp(1.54, 1.34, s), ang = lerp(109.47, 120, s);
+        const g = {}; g.C2 = V(-d / 2, 0, 0); g.C3 = V(d / 2, 0, 0);
+        const ax2 = X.clone(), ax3 = X.clone().negate();
+        function coo(C, ax, th, k) {
+            const b = dirFrom(ax, th, ang).normalize();
+            const Cc = C.clone().addScaledVector(b, 1.52);
+            const v = perpPart(X, b).normalize();          // carboxylate plane contains the C–C axis (planar fumarate)
+            g['C' + k] = Cc;
+            g['O' + k + 'a'] = Cc.clone().addScaledVector(b, 0.625).addScaledVector(v, 1.0825);
+            g['O' + k + 'b'] = Cc.clone().addScaledVector(b, 0.625).addScaledVector(v, -1.0825);
+        }
+        coo(g.C2, ax2, remTheta(T.c2.coo, T.c2.L, s), 1);
+        coo(g.C3, ax3, remTheta(T.c3.coo, T.c3.L, s), 4);
+        g.H2 = g.C2.clone().addScaledVector(dirFrom(ax2, remTheta(T.c2.h, T.c2.L, s), ang), 1.09);
+        g.H3 = g.C3.clone().addScaledVector(dirFrom(ax3, remTheta(T.c3.h, T.c3.L, s), ang), 1.09);
+        const e = smooth(0.12, 0.88, s);
+        g.H2L = g.C2.clone().addScaledVector(dL2, 1.09).lerp(H5final || N5pos.clone().addScaledVector(dL2, -1.01), e);
+        const h3dir = s > 0 ? dL3 : dirFrom(ax3, c3.L, ang).normalize();
+        g.H3L = g.C3.clone().addScaledVector(h3dir, 1.09).lerp(NBpos.clone().addScaledVector(dL3, -1.01), e);
+        return g;
+    }
+    let H5final = null;                     // where the hydride ends up on N5 (set once the flavin is built)
+    const G0 = substrateGeom(0, 'anti');   // the bound reactant: the enzyme is built around it
+
+    // ---- substrate atoms
+    const S = {};
+    const SUB_EL = { C1: 'C', O1a: 'O', O1b: 'O', C2: 'C', H2: 'H', H2L: 'H', C3: 'C', H3: 'H', H3L: 'H', C4: 'C', O4a: 'O', O4b: 'O' };
+    for (const k in SUB_EL) S[k] = makeAtom(SUB_EL[k]);
+
+    function coDoubleOffset(Cc, Od, Os, amt) {   // in-plane offset for a C=O second line, away from the other O
+        return () => {
+            const c = S[Cc] ? S[Cc].mesh.position : Cc.mesh.position;
+            const od = (S[Od] ? S[Od] : Od).mesh.position, os = (S[Os] ? S[Os] : Os).mesh.position;
+            return perpPart(c.clone().sub(os), od.clone().sub(c)).normalize().multiplyScalar(amt);
+        };
+    }
+    const sb = (a, b, o = {}) => new Bond(S[a], S[b], o);
+    sb('C1', 'C2'); sb('C3', 'C4'); sb('C2', 'H2'); sb('C3', 'H3');
+    sb('C1', 'O1b'); sb('C4', 'O4b');
+    sb('C1', 'O1a', { offsetFn: coDoubleOffset('C1', 'O1a', 'O1b', -0.09) });
+    sb('C1', 'O1a', { r: 0.07, offsetFn: coDoubleOffset('C1', 'O1a', 'O1b', 0.16) });
+    sb('C4', 'O4a', { offsetFn: coDoubleOffset('C4', 'O4a', 'O4b', -0.09) });
+    sb('C4', 'O4a', { r: 0.07, offsetFn: coDoubleOffset('C4', 'O4a', 'O4b', 0.16) });
+
+    // C2–C3: σ bond + the forming π bond (second line, offset within the alkene plane)
+    let piOffsetAmt = 0;
+    const ccOffset = (sign) => () => {
+        const c2 = S.C2.mesh.position, c3 = S.C3.mesh.position;
+        const v = perpPart(S.C1.mesh.position.clone().sub(c2), c3.clone().sub(c2)).normalize();
+        return v.multiplyScalar(sign * piOffsetAmt);
+    };
+    const bondCC = sb('C2', 'C3', { offsetFn: ccOffset(-0.5) });
+    const bondPi = sb('C2', 'C3', { r: 0.075, order: 0, offsetFn: ccOffset(1.0), dashes: 5, e2dash: true });
+    const bondC2H = sb('C2', 'H2L', { dashes: 5, e2dash: true });
+    const bondC3H = sb('C3', 'H3L', { dashes: 5, e2dash: true });
+
+    // =====================================================================
+    //  Enzyme: active-site residues, FAD, protein surface
+    // =====================================================================
+    const enzAtoms = [], enzBonds = [];
+    const resOffset = { clampA: V(0, 0, 0), clampB: V(0, 0, 0), base: V(0, 0, 0), fad: V(0, 0, 0) };
+    function eAtom(el, pos, res, scale) { const a = makeAtom(el, { scale }); a.base = pos.clone(); a.res = res; a.mesh.position.copy(pos); enzAtoms.push(a); return a; }
+    function eBond(a, b, o = {}) { const bd = new Bond(a, b, o); enzBonds.push(bd); return bd; }
+    const trig = (bondDir, inPlane, sgn) => bondDir.clone().multiplyScalar(-0.5).addScaledVector(inPlane, sgn * 0.866);  // sp2 positions ±120° from bondDir
+
+    // zig-zag side chain from `start`, heading along `ax`, wiggling along `side`
+    function chain(start, first, ax, side, n, res, names) {
+        const out = []; let prev = first, p = start.clone();
+        for (let i = 0; i < n; i++) {
+            const dir = ax.clone().multiplyScalar(0.82).addScaledVector(side, (i % 2 ? -1 : 1) * 0.57).normalize();
+            p = p.clone().addScaledVector(dir, i === 0 ? 1.46 : 1.53);
+            const a = eAtom('C', p, res, i === n - 1 ? 1.05 : 1); eBond(prev, a); prev = a; out.push(a);
+        }
+        return out;
+    }
+
+    // ---- Arg "clamps": bidentate salt bridges to each carboxylate (guanidinium coplanar with the CO2⁻)
+    const saltBridges = [];
+    function buildClamp(k, res) {
+        const Cc = G0['C' + k], Oa = G0['O' + k + 'a'], Ob = G0['O' + k + 'b'];
+        const mid = Oa.clone().add(Ob).multiplyScalar(0.5);
+        const u = mid.clone().sub(Cc).normalize(), w = Oa.clone().sub(Ob).normalize();
+        const NH1 = eAtom('N', mid.clone().addScaledVector(u, 2.85).addScaledVector(w, 1.15), res);
+        const NH2 = eAtom('N', mid.clone().addScaledVector(u, 2.85).addScaledVector(w, -1.15), res);
+        const CZ = eAtom('C', mid.clone().addScaledVector(u, 3.515), res);
+        const NE = eAtom('N', CZ.base.clone().addScaledVector(u, 1.33), res);
+        eBond(CZ, NH1); eBond(CZ, NH2); eBond(CZ, NE);
+        const hb = [], n = new THREE.Vector3().crossVectors(u, w).normalize();
+        [NH1, NH2].forEach((N, i) => {
+            const c = CZ.base.clone().sub(N.base).normalize();
+            const ip = perpPart(w, c).normalize();
+            [1, -1].forEach(sg => { const t = trig(c, ip, sg); const h = eAtom('H', N.base.clone().addScaledVector(t, 1.01), res); eBond(N, h);
+                if (t.dot(u) < -0.9) hb.push(h); });          // the N–H pointing at a carboxylate O (salt-bridge donor)
+        });
+        const hNE = eAtom('H', NE.base.clone().addScaledVector(u.clone().multiplyScalar(0.5).addScaledVector(w, -0.866), 1.01), res); eBond(NE, hNE);
+        const CDdir = u.clone().multiplyScalar(0.5).addScaledVector(w, 0.866);
+        const CD = eAtom('C', NE.base.clone().addScaledVector(CDdir, 1.46), res); eBond(NE, CD);
+        const tail = chain(CD.base, CD, u, w.clone().negate(), 3, res);
+        saltBridges.push(new Bond(hb[0], S['O' + k + 'a'], { r: 0.06, order: 0.5, color: 0x22e55e, dashes: 5, shrink: 0.3, onTop: true, zap: true }));
+        saltBridges.push(new Bond(hb[1], S['O' + k + 'b'], { r: 0.06, order: 0.5, color: 0x22e55e, dashes: 5, shrink: 0.3, onTop: true, zap: true }));
+        return { CZ, u, tail, NH1, NH2, hb, n };
+    }
+    const clampA = buildClamp(1, 'clampA');
+    const clampB = buildClamp(4, 'clampB');
+
+    // ---- Active-site base (Arg, neutral guanidine form) that removes H⁺ from C3
+    const baseArg = (() => {
+        const res = 'base';
+        const w = new THREE.Vector3().crossVectors(dL3, X).normalize();
+        const Nb = eAtom('N', NBpos, res);
+        const c = dL3.clone().multiplyScalar(0.5).addScaledVector(w, 0.866).normalize();      // Nb → CZ
+        const CZ = eAtom('C', NBpos.clone().addScaledVector(c, 1.33), res); eBond(Nb, CZ);
+        const hIn = dL3.clone().negate();                                                      // where the proton arrives
+        const hOld = c.clone().add(hIn).negate().normalize();
+        const hNb = eAtom('H', NBpos.clone().addScaledVector(hOld, 1.01), res); eBond(Nb, hNb);
+        const cp = perpPart(w, c).normalize();
+        const dirA = c.clone().multiplyScalar(0.5).addScaledVector(cp, 0.866).normalize();
+        const dirB = c.clone().multiplyScalar(0.5).addScaledVector(cp, -0.866).normalize();
+        const NH = eAtom('N', CZ.base.clone().addScaledVector(dirA, 1.33), res); eBond(CZ, NH);
+        const NE = eAtom('N', CZ.base.clone().addScaledVector(dirB, 1.33), res); eBond(CZ, NE);
+        { const b = CZ.base.clone().sub(NH.base).normalize(); const ip = perpPart(w, b).normalize();
+          [1, -1].forEach(sg => { const h = eAtom('H', NH.base.clone().addScaledVector(trig(b, ip, sg), 1.01), res); eBond(NH, h); }); }
+        const b = CZ.base.clone().sub(NE.base).normalize(); const ip = perpPart(w, b).normalize();
+        const t1 = trig(b, ip, 1), t2 = trig(b, ip, -1);
+        const hNE = eAtom('H', NE.base.clone().addScaledVector(t1, 1.01), res); eBond(NE, hNE);
+        const CD = eAtom('C', NE.base.clone().addScaledVector(t2, 1.46), res); eBond(NE, CD);
+        const tail = chain(CD.base, CD, t2, t1, 3, res);
+        return { Nb, CZ, tail, n: new THREE.Vector3().crossVectors(dL3, w).normalize() };
+    })();
+
+    // ---- FAD isoalloxazine ring; its N5 sits on the line of the C2–H bond, ~perpendicular to the ring plane
+    const fad = (() => {
+        const res = 'fad';
+        const e1 = perpPart(V(0.94, 0, -0.34), dL2).normalize();
+        const e2 = new THREE.Vector3().crossVectors(dL2, e1).normalize();
+        const org = N5pos.clone().addScaledVector(e2, -1.4);
+        const P = (u, v) => org.clone().addScaledVector(e1, u).addScaledVector(e2, v);
+        const hx = (cx, angDeg, r = 1.4) => P(cx + r * Math.cos(angDeg * deg), r * Math.sin(angDeg * deg));
+        const A = {};
+        // ring B (central, pyrazine): N5 top, N10 bottom
+        A.N5 = eAtom('N', N5pos, res);  A.N5.base = N5pos.clone();
+        A.C4a = eAtom('C', hx(0, 30), res);  A.C10a = eAtom('C', hx(0, 330), res);
+        A.N10 = eAtom('N', hx(0, 270), res); A.C9a = eAtom('C', hx(0, 210), res); A.C5a = eAtom('C', hx(0, 150), res);
+        // ring C (pyrimidine)
+        A.C4 = eAtom('C', hx(2.425, 90), res); A.N3 = eAtom('N', hx(2.425, 30), res);
+        A.C2 = eAtom('C', hx(2.425, 330), res); A.N1 = eAtom('N', hx(2.425, 270), res);
+        // ring A (dimethylbenzene)
+        A.C6 = eAtom('C', hx(-2.425, 90), res); A.C7 = eAtom('C', hx(-2.425, 150), res);
+        A.C8 = eAtom('C', hx(-2.425, 210), res); A.C9 = eAtom('C', hx(-2.425, 270), res);
+        const ring = [['N5','C4a'],['C4a','C10a'],['C10a','N10'],['N10','C9a'],['C9a','C5a'],['C5a','N5'],
+                      ['C4a','C4'],['C4','N3'],['N3','C2'],['C2','N1'],['N1','C10a'],
+                      ['C5a','C6'],['C6','C7'],['C7','C8'],['C8','C9'],['C9','C9a']];
+        ring.forEach(([a, b]) => eBond(A[a], A[b]));
+        const sub = (from, angDeg, el, len, cx) => { const p = A[from].base.clone().addScaledVector(P(cx + Math.cos(angDeg * deg), Math.sin(angDeg * deg)).sub(P(cx, 0)).normalize(), len); return eAtom(el, p, res); };
+        A.O4 = sub('C4', 90, 'O', 1.23, 0); A.O2 = sub('C2', 330, 'O', 1.23, 0);
+        A.HN3 = sub('N3', 30, 'H', 1.01, 0);
+        A.M7 = sub('C7', 150, 'C', 1.50, 0); A.M8 = sub('C8', 210, 'C', 1.50, 0);
+        A.H6 = sub('C6', 90, 'H', 1.08, 0); A.H9 = sub('C9', 270, 'H', 1.08, 0);
+        A.R1 = sub('N10', 270, 'C', 1.47, 0); A.R1.mesh.scale.multiplyScalar(1.05);
+        A.HN1 = sub('N1', 270, 'H', 1.01, 0);                     // appears at the end (N1 protonation → FADH₂)
+        eBond(A.C4, A.O4, { offsetFn: () => e1.clone().multiplyScalar(0.09) }); eBond(A.C4, A.O4, { r: 0.07, offsetFn: () => e1.clone().multiplyScalar(-0.16) });
+        eBond(A.C2, A.O2, { offsetFn: () => e2.clone().multiplyScalar(-0.08) }); eBond(A.C2, A.O2, { r: 0.07, offsetFn: () => e2.clone().multiplyScalar(0.14) });
+        [['N3','HN3'],['C7','M7'],['C8','M8'],['C6','H6'],['C9','H9'],['N10','R1']].forEach(([a, b]) => eBond(A[a], A[b]));
+        A.bondN1H = eBond(A.N1, A.HN1, { order: 0 });
+        A.center = P(0, 0);
+        return A;
+    })();
+
+    // ---- reduced flavin: N5 becomes pyramidal (sp3-like). It rises slightly out of the ring plane toward the substrate and
+    //      its new N–H makes ~109° with both ring bonds instead of sticking straight out of the plane.
+    const N5_UP = dL2.clone().negate(), N5_RISE = 0.42;
+    {
+        const N5r = N5pos.clone().addScaledVector(N5_UP, N5_RISE);
+        const u1 = fad.C4a.base.clone().sub(N5r).normalize(), u2 = fad.C5a.base.clone().sub(N5r).normalize();
+        const bis = u1.clone().add(u2).normalize(), up = perpPart(N5_UP, bis).normalize();
+        let hdir = null;                                    // tilt the N–H until H–N5–C ≈ 109°
+        for (let b = 0; b <= 90; b += 0.5) {
+            const h = bis.clone().multiplyScalar(-Math.cos(b * deg)).addScaledVector(up, Math.sin(b * deg));
+            if (Math.acos(clamp(h.dot(u1), -1, 1)) / deg <= 109.5) { hdir = h; break; }
+        }
+        H5final = N5r.clone().addScaledVector(hdir || up, 1.01);
+    }
+
+    // ---- forming bonds from the transferred H's to their acceptors
+    const bondHN5 = new Bond(S.H2L, fad.N5, { order: 0, dashes: 5, e2dash: true });
+    const bondHNb = new Bond(S.H3L, baseArg.Nb, { order: 0, dashes: 5, e2dash: true });
+
+    // ---- protein: van der Waals spheres filling an irregular, multi-lobed body, with a smooth funnel-shaped
+    //      channel to the active site. Only atoms near the surface (outer surface, channel, pocket) are kept.
+    const protein = (() => {
+        let seed = 98765;
+        const rnd = () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+            t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+        const C0 = OPEN_DIR.clone().multiplyScalar(-10);
+        // irregular body: overlapping lobes of different sizes, offset in random directions
+        const blobs = [{ c: C0.clone(), r: 8.0 }];
+        for (let i = 0; i < 11; i++) {
+            const z = 2 * rnd() - 1, ph = 2 * Math.PI * rnd(), q = Math.sqrt(1 - z * z);
+            const d = V(q * Math.cos(ph), q * Math.sin(ph), z);
+            const c = C0.clone().addScaledVector(d, 7 + 10 * rnd());
+            const h = c.dot(OPEN_DIR) + 4; if (h > 0) c.addScaledVector(OPEN_DIR, -2 * h);   // keep lobes behind the channel mouth
+            blobs.push({ c, r: 4.0 + 5.5 * rnd() });
+        }
+        // the active-site region must be enclosed: residues, FAD and the site itself
+        blobs.push({ c: V(0, 0, 0), r: 7.5 });
+        // membrane domain (Complex II's anchor subunits) running from the body down through the bilayer
+        for (let k = 8; k <= 44; k += 6) blobs.push({ c: OPEN_DIR.clone().multiplyScalar(-10 - k), r: 9.0 });
+        enzAtoms.forEach(a => blobs.push({ c: a.base.clone(), r: 4.8 }));
+        const smin = (a, b, k) => { const h = Math.max(k - Math.abs(a - b), 0) / k; return Math.min(a, b) - h * h * k * 0.25; };
+        const noise = (p) => 1.3 * Math.sin(0.43 * p.x + 1.3) * Math.sin(0.51 * p.y + 0.2) * Math.sin(0.39 * p.z + 2.0)
+                           + 0.7 * Math.sin(0.83 * p.x + 0.71 * p.y - 0.4) * Math.cos(0.77 * p.z + 0.9);
+        const field = (p) => { let f = 1e9; for (const b of blobs) f = smin(f, p.distanceTo(b.c) - b.r, 3.5); return f + noise(p); };
+        // things the protein atoms must stay clear of (pocket): bound substrate (both conformers) and every residue/FAD atom
+        const site = [];
+        for (const m of ['anti', 'gauche']) { const g = substrateGeom(0, m); for (const k in g) site.push(g[k]); }
+        enzAtoms.forEach(a => { site.push(a.base.clone()); });
+        site.push(...clampA.tail.map(a => a.base.clone().addScaledVector(clampA.u, 1.8)), ...clampB.tail.map(a => a.base.clone().addScaledVector(clampB.u, 1.8)));
+        const pocket = (p) => { let m = 1e9; for (const q of site) m = Math.min(m, p.distanceTo(q)); return m - 3.1; };
+        // smooth funnel: radius widens with distance along the channel axis
+        const channel = (p) => { const t = p.dot(OPEN_DIR); if (t < -2) return 1e9; const r = p.clone().addScaledVector(OPEN_DIR, -t).length();
+            return r - (4.6 + 0.028 * Math.max(0, t) * Math.max(0, t)); };
+        // jittered lattice
+        const lo = V(1e9, 1e9, 1e9), hi = V(-1e9, -1e9, -1e9);
+        blobs.forEach(b => { lo.x = Math.min(lo.x, b.c.x - b.r - 4); lo.y = Math.min(lo.y, b.c.y - b.r - 4); lo.z = Math.min(lo.z, b.c.z - b.r - 4);
+                             hi.x = Math.max(hi.x, b.c.x + b.r + 4); hi.y = Math.max(hi.y, b.c.y + b.r + 4); hi.z = Math.max(hi.z, b.c.z + b.r + 4); });
+        const SP = 1.95, atoms = [];
+        for (let x = lo.x; x <= hi.x; x += SP) for (let y = lo.y; y <= hi.y; y += SP) for (let z = lo.z; z <= hi.z; z += SP) {
+            const p = V(x + (rnd() - 0.5) * 0.8, y + (rnd() - 0.5) * 0.8, z + (rnd() - 0.5) * 0.8);
+            const f = field(p); if (f > 0) continue;
+            const ch = channel(p); if (ch < 0) continue;
+            if (f < -3.6 && ch > 3.6 && p.length() > 16) continue;           // deep interior far from the site: never visible
+            const pk = pocket(p); if (pk < 0) continue;
+            if (f < -3.6 && ch > 3.6 && pk > 3.6) continue;                    // buried: not part of any surface
+            const q = rnd();
+            atoms.push({ p, el: q < 0.64 ? 'C' : q < 0.81 ? 'N' : q < 0.99 ? 'O' : 'S', f, ch, pk, t: p.dot(OPEN_DIR) });
+        }
+        const VDW = { C: 1.70, N: 1.55, O: 1.52, S: 1.80 };
+        const OUTER = new THREE.Color(0x6f7682);                                   // uniform grey exterior (darker than the bilayer)
+        const SITE = new THREE.Color(0x3d424b);                                    // active site: dark grey, as if in the protein's shadow
+        // which atoms line the active site (inner channel wall and pocket), and how strongly
+        const siteK = atoms.map(a => {
+            const R = a.p.length();
+            const kChan = (a.ch < 3.6 && a.f < -1.2) ? smooth(7.5, 3.5, a.t) : 0;
+            const kPock = (a.pk < 3.6 && a.f < -2.5) ? smooth(10.5, 7, R) : 0;
+            return Math.max(kChan, kPock);
+        });
+        const colourOf = (a, k, out) => { out.copy(OUTER); if (k > 0) out.lerp(SITE, smooth(0.05, 0.45, k)).multiplyScalar(1 - 0.22 * smooth(9, 2, a.p.length())); return out; };   // shades gently darker with depth
+
+        // ---- smooth molecular surface: a softened union of the van der Waals spheres (log-sum-exp blend, k = 0.9 Å),
+        //      sampled on a 0.8 Å grid and meshed with surface nets
+        const KS = 0.42, INFL = 0.0, H = 0.6, CUT = 5 * KS;
+        const sLo = V(1e9, 1e9, 1e9), sHi = V(-1e9, -1e9, -1e9);
+        atoms.forEach(a => {
+            sLo.x = Math.min(sLo.x, a.p.x); sLo.y = Math.min(sLo.y, a.p.y); sLo.z = Math.min(sLo.z, a.p.z);
+            sHi.x = Math.max(sHi.x, a.p.x); sHi.y = Math.max(sHi.y, a.p.y); sHi.z = Math.max(sHi.z, a.p.z); });
+        const pad = 2.2 + INFL + CUT;
+        const sOrg = V(sLo.x - pad, sLo.y - pad, sLo.z - pad);
+        const nx = Math.ceil((sHi.x - sLo.x + 2 * pad) / H) + 1, ny = Math.ceil((sHi.y - sLo.y + 2 * pad) / H) + 1, nz = Math.ceil((sHi.z - sLo.z + 2 * pad) / H) + 1;
+        const gi = (x, y, z) => x + nx * (y + ny * z);
+        const acc = new Float32Array(nx * ny * nz);
+        for (const a of atoms) {
+            const r = VDW[a.el] + INFL, reach = r + CUT;
+            const x0 = Math.max(0, Math.floor((a.p.x - reach - sOrg.x) / H)), x1 = Math.min(nx - 1, Math.ceil((a.p.x + reach - sOrg.x) / H));
+            const y0 = Math.max(0, Math.floor((a.p.y - reach - sOrg.y) / H)), y1 = Math.min(ny - 1, Math.ceil((a.p.y + reach - sOrg.y) / H));
+            const z0 = Math.max(0, Math.floor((a.p.z - reach - sOrg.z) / H)), z1 = Math.min(nz - 1, Math.ceil((a.p.z + reach - sOrg.z) / H));
+            for (let z = z0; z <= z1; z++) { const dz = sOrg.z + z * H - a.p.z;
+                for (let y = y0; y <= y1; y++) { const dy = sOrg.y + y * H - a.p.y;
+                    for (let x = x0; x <= x1; x++) { const dx = sOrg.x + x * H - a.p.x;
+                        const sd = Math.sqrt(dx * dx + dy * dy + dz * dz) - r;
+                        if (sd < CUT) acc[gi(x, y, z)] += Math.exp(-sd / KS);
+                    } } }
+        }
+        const vals = new Float32Array(acc.length);
+        for (let i = 0; i < acc.length; i++) vals[i] = acc[i] > 1e-6 ? -KS * Math.log(acc[i]) : 10;
+        // surface nets
+        const cellV = new Int32Array(nx * ny * nz).fill(-1), pos = [];
+        const CO = [[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0], [0, 0, 1], [1, 0, 1], [0, 1, 1], [1, 1, 1]];
+        const ED = [[0, 1], [2, 3], [4, 5], [6, 7], [0, 2], [1, 3], [4, 6], [5, 7], [0, 4], [1, 5], [2, 6], [3, 7]];
+        const cv = new Float32Array(8);
+        for (let z = 0; z < nz - 1; z++) for (let y = 0; y < ny - 1; y++) for (let x = 0; x < nx - 1; x++) {
+            let neg = 0;
+            for (let c = 0; c < 8; c++) { cv[c] = vals[gi(x + CO[c][0], y + CO[c][1], z + CO[c][2])]; if (cv[c] < 0) neg++; }
+            if (neg === 0 || neg === 8) continue;
+            let sx = 0, sy = 0, sz = 0, n = 0;
+            for (const [a, b] of ED) {
+                if ((cv[a] < 0) === (cv[b] < 0)) continue;
+                const t = cv[a] / (cv[a] - cv[b]);
+                sx += CO[a][0] + t * (CO[b][0] - CO[a][0]); sy += CO[a][1] + t * (CO[b][1] - CO[a][1]); sz += CO[a][2] + t * (CO[b][2] - CO[a][2]); n++;
+            }
+            cellV[gi(x, y, z)] = pos.length / 3;
+            pos.push(sOrg.x + H * (x + sx / n), sOrg.y + H * (y + sy / n), sOrg.z + H * (z + sz / n));
+        }
+        const tris = [];
+        const quad = (a, b, c, d) => { tris.push(a, b, c, a, c, d); };
+        for (let z = 1; z < nz - 1; z++) for (let y = 1; y < ny - 1; y++) for (let x = 1; x < nx - 1; x++) {
+            const v0 = vals[gi(x, y, z)], in0 = v0 < 0;
+            if (in0 !== (vals[gi(x + 1, y, z)] < 0)) {
+                const a = cellV[gi(x, y - 1, z - 1)], b = cellV[gi(x, y, z - 1)], c = cellV[gi(x, y, z)], d = cellV[gi(x, y - 1, z)];
+                if (a >= 0 && b >= 0 && c >= 0 && d >= 0) in0 ? quad(a, b, c, d) : quad(a, d, c, b);
+            }
+            if (in0 !== (vals[gi(x, y + 1, z)] < 0)) {
+                const a = cellV[gi(x - 1, y, z - 1)], b = cellV[gi(x - 1, y, z)], c = cellV[gi(x, y, z)], d = cellV[gi(x, y, z - 1)];
+                if (a >= 0 && b >= 0 && c >= 0 && d >= 0) in0 ? quad(a, b, c, d) : quad(a, d, c, b);
+            }
+            if (in0 !== (vals[gi(x, y, z + 1)] < 0)) {
+                const a = cellV[gi(x - 1, y - 1, z)], b = cellV[gi(x, y - 1, z)], c = cellV[gi(x, y, z)], d = cellV[gi(x - 1, y, z)];
+                if (a >= 0 && b >= 0 && c >= 0 && d >= 0) in0 ? quad(a, b, c, d) : quad(a, d, c, b);
+            }
+        }
+        // colour each vertex from its nearest atom (spatial hash), and flag active-site vertices
+        const HB = 3.0, hash = new Map(), hk = (x, y, z) => x + ',' + y + ',' + z;
+        atoms.forEach((a, i) => { const k = hk(Math.floor(a.p.x / HB), Math.floor(a.p.y / HB), Math.floor(a.p.z / HB)); if (!hash.has(k)) hash.set(k, []); hash.get(k).push(i); });
+        const nv = pos.length / 3, colors = new Float32Array(nv * 3), vSite = new Float32Array(nv), col = new THREE.Color();
+        for (let v = 0; v < nv; v++) {
+            const px = pos[3 * v], py = pos[3 * v + 1], pz = pos[3 * v + 2];
+            const cx = Math.floor(px / HB), cy = Math.floor(py / HB), cz = Math.floor(pz / HB);
+            // smoothed "siteness": a Gaussian-weighted average over nearby atoms (not just the nearest one), so the
+            // active-site shading changes gradually across the surface instead of in patches
+            let ws = 0, ks = 0;
+            for (let dz = -1; dz <= 1; dz++) for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+                const l = hash.get(hk(cx + dx, cy + dy, cz + dz)); if (!l) continue;
+                for (const i of l) { const q = atoms[i].p, d = (q.x - px) ** 2 + (q.y - py) ** 2 + (q.z - pz) ** 2; if (d > 20) continue; const w = Math.exp(-d / 6.5); ws += w; ks += w * siteK[i]; }
+            }
+            const k = ws > 0 ? ks / ws : 0;
+            colourOf({ p: V(px, py, pz) }, k, col);
+            colors[3 * v] = col.r; colors[3 * v + 1] = col.g; colors[3 * v + 2] = col.b; vSite[v] = k;
+        }
+        const posAttr = new THREE.Float32BufferAttribute(pos, 3), colAttr = new THREE.Float32BufferAttribute(colors, 3), siteAttr = new THREE.Float32BufferAttribute(vSite, 1);
+        const gAll = new THREE.BufferGeometry(); gAll.setAttribute('position', posAttr); gAll.setIndex(tris); gAll.computeVertexNormals();
+        const nrmAttr = gAll.attributes.normal;
+        // Opacity is computed per pixel (not per triangle), so every transition is a smooth fade with no jagged triangle edges:
+        //  · exterior → active-site lining blends across the "siteness" value interpolated between vertices
+        //  · zoomed in, lining in front of the site (toward the camera) fades to see-through over a ~3 Å band
+        const U = { uExt: { value: 0.35 }, uFront: { value: 0.35 }, uNear: { value: 0 }, uView: { value: V(0, 0, 1) } };
+        const withAlpha = (mat, expr) => {
+            mat.onBeforeCompile = (sh) => {
+                Object.assign(sh.uniforms, U);
+                sh.vertexShader = 'attribute float aSite;\nvarying float vSdhSite;\nvarying vec3 vSdhPos;\n' + sh.vertexShader.replace('#include <begin_vertex>',
+                    '#include <begin_vertex>\n  vSdhSite = aSite;\n  vSdhPos = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+                sh.fragmentShader = 'uniform float uExt;\nuniform float uFront;\nuniform float uNear;\nuniform vec3 uView;\nvarying float vSdhSite;\nvarying vec3 vSdhPos;\n' +
+                    sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n  ' + expr);
+            };
+            // the two materials share the same onBeforeCompile source text, so give each its own program cache key —
+            // otherwise three.js reuses one compiled shader for both (which made the exterior fully transparent)
+            mat.customProgramCacheKey = () => 'sdh-alpha:' + expr;
+            return mat;
+        };
+        const extIdx = [], siteTris = [];
+        for (let t = 0; t < tris.length; t += 3) {
+            const a = tris[t], b = tris[t + 1], c = tris[t + 2];
+            const mn = Math.min(vSite[a], vSite[b], vSite[c]), mx = Math.max(vSite[a], vSite[b], vSite[c]);
+            if (mn < 0.6) extIdx.push(a, b, c);          // boundary triangles go in both meshes and cross-fade
+            if (mx > 0.15) siteTris.push(a, b, c);
+        }
+        const geoWith = (index) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', posAttr); if (nrmAttr) g.setAttribute('normal', nrmAttr);
+            g.setAttribute('color', colAttr); g.setAttribute('aSite', siteAttr); g.setIndex(index); return g; };
+        // exterior: depth-only pass, then colour pass, so a translucent protein shows only its outermost surface
+        const extGeo = geoWith(extIdx);
+        const depthMat = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: true, transparent: true });
+        const colMat = withAlpha(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, metalness: 0, transparent: true, depthWrite: false }),
+            // zoomed in: the outer surface between the camera and the active site (a ~15 Å-wide column along the line of
+            // sight, on the camera side of the site) fades out completely
+            'float sdhLat = length(vSdhPos - uView * dot(vSdhPos, uView));\n' +
+            '  float sdhCut = uNear * smoothstep(-2.0, 2.0, dot(vSdhPos, uView)) * (1.0 - smoothstep(13.0, 19.0, sdhLat));\n' +
+            '  diffuseColor.a = uExt * (1.0 - smoothstep(0.15, 0.6, vSdhSite)) * (1.0 - sdhCut);');
+        const depthMesh = new THREE.Mesh(extGeo, depthMat), colMesh = new THREE.Mesh(extGeo, colMat);
+        depthMesh.renderOrder = 50; colMesh.renderOrder = 51;
+        // active-site lining: solid, except (zoomed in) the part between the camera and the site, which fades to see-through
+        const siteMat = withAlpha(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0, transparent: true, depthWrite: true }),
+            'float sdhFront = smoothstep(0.5, 3.5, dot(vSdhPos, uView)) * uNear;\n  diffuseColor.a = smoothstep(0.15, 0.6, vSdhSite) * mix(1.0, uFront, sdhFront);');
+        const siteMesh = new THREE.Mesh(geoWith(siteTris), siteMat);
+        siteMesh.renderOrder = 46;
+        [depthMesh, colMesh, siteMesh].forEach(m => { m.frustumCulled = false; scene.add(m); });
+        return { U, depthMesh, colMesh, colMat, siteMesh, siteMat, count: atoms.length,
+                 siteCount: siteTris.length / 3, vertices: nv, triangles: tris.length / 3, atoms, field };
+    })();
+
+    // ---- inner mitochondrial membrane around the anchor: phospholipids (choline + phosphate + glycerol head, two acyl tails)
+    const membrane = (() => {
+        // bilayer set high on the enzyme so its lower body and anchor sit inside the membrane; lipids that would overlap the
+        // protein are left out, so the lipids pack right up against its irregular surface
+        const n = OPEN_DIR, e1 = perpPart(V(0, 1, 0), n).normalize(), e2 = new THREE.Vector3().crossVectors(n, e1);
+        const TOP = -22, BOT = -62, R = 82, sp = 8.2;
+        let sd = 13579; const rr = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
+        const at = (x, y, t) => n.clone().multiplyScalar(t).addScaledVector(e1, x).addScaledVector(e2, y);
+        const GREY = 0x9ca3af, GREY_END = 0x8b919a, PALE_RED = 0xc4928e;            // carbon grey, oxygen pale red (muted)
+        const H = [], Tl = [];                                                        // [position, radius, colour]
+        for (let j = -12; j <= 12; j++) for (let i = -14; i <= 14; i++) {
+            const x = (i + j * 0.5) * sp + 1.2 * (rr() - 0.5), y = j * sp * 0.866 + 1.2 * (rr() - 0.5);
+            if (Math.hypot(x, y) > R) continue;
+            for (const [t0, dn] of [[TOP, -1], [BOT, 1]]) {                           // dn: direction of the tails along the normal
+                const t = t0 + 1.2 * (rr() - 0.5), hs = [], ts = [];
+                hs.push([at(x + 0.8 * (rr() - 0.5), y + 0.8 * (rr() - 0.5), t - dn * 2.6), 2.5, GREY]);   // choline (methyl groups)
+                hs.push([at(x, y, t), 2.4, PALE_RED]);                                                      // phosphate oxygens
+                hs.push([at(x, y, t + dn * 2.7), 2.2, PALE_RED]);                                           // glycerol / ester oxygens
+                const a = 2 * Math.PI * rr(), ox = Math.cos(a) * 2.1, oy = Math.sin(a) * 2.1, tilt = [0.25 * (rr() - 0.5), 0.25 * (rr() - 0.5)];
+                for (const sgn of [1, -1]) for (let k = 1; k <= 8; k++) {
+                    const d = 2.7 + k * 2.05, w = 0.55 * Math.sin(k * 1.9 + a * 3 + sgn);
+                    ts.push([at(x + sgn * ox + tilt[0] * d + w, y + sgn * oy + tilt[1] * d - w, t + dn * d), 1.9, k === 8 ? GREY_END : GREY]);
+                }
+                if ([...hs, ...ts].some(([p]) => protein.field(p) < 3.0)) continue;   // would clash with the enzyme
+                const L = { x, y, r: Math.hypot(x, y), ph: 6.28 * rr(), w: 0.8 + 0.8 * rr() };
+                hs.forEach(h => h.push(L, 0)); ts.forEach((tt, k) => tt.push(L, 1 + (k % 8)));
+                H.push(...hs); Tl.push(...ts);
+            }
+        }
+        const geo = new THREE.SphereGeometry(1, 8, 6);
+        const M = new THREE.Matrix4(), q = new THREE.Quaternion(), c = new THREE.Color();
+        const build = (list, rough) => {
+            const mesh = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ roughness: rough }), list.length);
+            list.forEach(([p, r, col], k) => { M.compose(p, q, V(r, r, r)); mesh.setMatrixAt(k, M); mesh.setColorAt(k, c.set(col)); });
+            mesh.frustumCulled = false; scene.add(mesh); return mesh;
+        };
+        const heads = build(H, 0.6), tails = build(Tl, 0.75);
+        // fluidity: slow undulation waves across the whole bilayer (damped next to the protein so lipids never run into it),
+        // plus each lipid bobbing and drifting a little, with tail segments flexing more toward the chain ends
+        const wave = (x, y, T) => 2.0 * Math.sin(0.065 * x + 0.8 * T) + 1.5 * Math.sin(0.05 * y - 0.6 * T + 1.0) + 0.9 * Math.sin(0.1 * (x + y) + 1.2 * T + 2.0);
+        const tmp = V(0, 0, 0);
+        function step(T) {
+            for (const [list, mesh] of [[H, heads], [Tl, tails]]) {
+                list.forEach(([p, r, col, L, seg], k) => {
+                    const amp = smooth(17, 40, L.r);
+                    const dn = wave(L.x, L.y, T) * amp + 0.45 * Math.sin(T * 1.6 * L.w + L.ph);
+                    const fx = 0.35 * Math.sin(T * 1.1 * L.w + L.ph * 1.7) * amp, fy = 0.35 * Math.cos(T * 0.9 * L.w + L.ph) * amp;
+                    const flex = seg ? 0.09 * seg * amp : 0;
+                    tmp.copy(p).addScaledVector(n, dn).addScaledVector(e1, fx + flex * Math.sin(T * 2.2 + L.ph + seg)).addScaledVector(e2, fy + flex * Math.cos(T * 1.9 + L.ph - seg));
+                    M.compose(tmp, q, V(r, r, r)); mesh.setMatrixAt(k, M);
+                });
+                mesh.instanceMatrix.needsUpdate = true;
+            }
+        }
+        step(0);
+        return { heads, tails, count: H.length / 3, TOP, step };
+    })();
+
+    // ---- matrix molecules diffusing around the enzyme: succinate, fumarate, malate, phosphate, water, K⁺ (ball-and-stick)
+    const bgMols = (() => {
+        const T = [];
+        const sg = substrateGeom(0, 'anti');
+        const cen = (atoms) => { const c = V(0, 0, 0); atoms.forEach(a => c.add(a[1])); c.multiplyScalar(1 / atoms.length); atoms.forEach(a => a[1] = a[1].clone().sub(c)); return atoms; };
+        const SUCC = ['C1', 'O1a', 'O1b', 'C2', 'H2', 'H2L', 'C3', 'H3', 'H3L', 'C4', 'O4a', 'O4b'];
+        const SB = [[0, 1], [0, 2], [0, 3], [3, 4], [3, 5], [3, 6], [6, 7], [6, 8], [6, 9], [9, 10], [9, 11]];
+        T.push({ name: 'succinate', atoms: cen(SUCC.map(k => [SUB_EL[k], sg[k].clone()])), bonds: SB, n: 34 });
+        { const fg = substrateGeom(1, 'anti'); const K = ['C1', 'O1a', 'O1b', 'C2', 'H2', 'C3', 'H3', 'C4', 'O4a', 'O4b'];
+          T.push({ name: 'fumarate', atoms: cen(K.map(k => [SUB_EL[k], fg[k].clone()])), bonds: [[0, 1], [0, 2], [0, 3], [3, 4], [3, 5], [5, 6], [5, 7], [7, 8], [7, 9]], n: 12 }); }
+        { const a = SUCC.map(k => [SUB_EL[k], sg[k].clone()]); const C2 = sg.C2, d = sg.H2.clone().sub(C2).normalize();     // malate: OH on C2
+          a[4] = ['O', C2.clone().addScaledVector(d, 1.43)];
+          const hdir = d.clone().add(sg.C1.clone().sub(C2).normalize().multiplyScalar(-0.6)).normalize();
+          a.push(['H', a[4][1].clone().addScaledVector(hdir, 0.97)]);
+          T.push({ name: 'malate', atoms: cen(a), bonds: SB.concat([[4, 12]]), n: 12 }); }
+        { const tet = [V(1, 1, 1), V(1, -1, -1), V(-1, 1, -1), V(-1, -1, 1)].map(v => v.normalize().multiplyScalar(1.53));
+          const a = [['P', V(0, 0, 0)], ...tet.map(v => ['O', v])]; a.push(['H', tet[0].clone().multiplyScalar(1.63)]);
+          T.push({ name: 'phosphate', atoms: a, bonds: [[0, 1], [0, 2], [0, 3], [0, 4], [1, 5]], n: 14 }); }
+        T.push({ name: 'water', atoms: cen([['O', V(0, 0, 0)], ['H', V(0.757, 0.586, 0)], ['H', V(-0.757, 0.586, 0)]]), bonds: [[0, 1], [0, 2]], n: 120 });
+        T.push({ name: 'K+', atoms: [['K', V(0, 0, 0)]], bonds: [], n: 20 });
+        // small builder for the larger molecules
+        const mk = () => { const atoms = [], bonds = []; return { atoms, bonds, add: (el, p, j) => { atoms.push([el, p]); if (j != null) bonds.push([j, atoms.length - 1]); return atoms.length - 1; } }; };
+        // β-D-glucose, chair: all OH groups and CH2OH equatorial, ring H's axial
+        { const m = mk(), ring = [];
+          for (let k = 0; k < 6; k++) { const a = k * Math.PI / 3; ring.push(V(1.45 * Math.cos(a), 1.45 * Math.sin(a), k % 2 ? 0.25 : -0.25)); }
+          const ri = ring.map((p, k) => m.add(k === 0 ? 'O' : 'C', p));
+          for (let k = 0; k < 6; k++) m.bonds.push([ri[k], ri[(k + 1) % 6]]);
+          for (let k = 1; k <= 5; k++) {
+            const p = ring[k], sg = k % 2 ? 1 : -1, rad = V(p.x, p.y, 0).normalize();
+            const eq = rad.clone().multiplyScalar(0.94).add(V(0, 0, -0.33 * sg)).normalize(), ax = V(0, 0, sg);
+            m.add('H', p.clone().addScaledVector(ax, 1.09), ri[k]);
+            if (k < 5) { const o = m.add('O', p.clone().addScaledVector(eq, 1.43), ri[k]);
+                         m.add('H', m.atoms[o][1].clone().addScaledVector(eq.clone().multiplyScalar(0.35).addScaledVector(ax, -0.94).normalize(), 0.96), o); }
+            else { const c6 = m.add('C', p.clone().addScaledVector(eq, 1.52), ri[k]), P6 = m.atoms[c6][1];
+                   const o6 = m.add('O', P6.clone().addScaledVector(eq.clone().add(V(0, 0, 0.6)).normalize(), 1.43), c6);
+                   m.add('H', P6.clone().add(V(0, 0, -1.05)), c6); m.add('H', P6.clone().addScaledVector(V(-eq.y, eq.x, 0), 1.05), c6);
+                   m.add('H', m.atoms[o6][1].clone().add(V(0.4, 0.5, 0.6).normalize().multiplyScalar(0.96)), o6); }
+          }
+          T.push({ name: 'glucose', atoms: cen(m.atoms), bonds: m.bonds, n: 12 }); }
+        // ATP: adenine (purine), ribose, triphosphate chain (schematic geometry)
+        { const m = mk(), r6 = 1.39, ang = (d) => d * Math.PI / 180;
+          const hx = (d) => V(r6 * Math.cos(ang(d)), r6 * Math.sin(ang(d)), 0);
+          const N1 = m.add('N', hx(90)), C2 = m.add('C', hx(150), N1), N3 = m.add('N', hx(210), C2), C4 = m.add('C', hx(270), N3), C5 = m.add('C', hx(330), C4), C6 = m.add('C', hx(30), C5);
+          m.bonds.push([C6, N1]);
+          const pC4 = m.atoms[C4][1], pC5 = m.atoms[C5][1], mid = pC4.clone().add(pC5).multiplyScalar(0.5), nrm = mid.clone().normalize();
+          const ctr = mid.clone().addScaledVector(nrm, 0.95), R5 = 1.174;
+          const a4 = Math.atan2(pC4.y - ctr.y, pC4.x - ctr.x), a5 = Math.atan2(pC5.y - ctr.y, pC5.x - ctr.x);
+          let dl = a5 - a4; while (dl > Math.PI) dl -= 2 * Math.PI; while (dl < -Math.PI) dl += 2 * Math.PI;
+          const pp = (a) => V(ctr.x + R5 * Math.cos(a), ctr.y + R5 * Math.sin(a), 0);
+          const N7 = m.add('N', pp(a5 + dl), C5), C8 = m.add('C', pp(a5 + 2 * dl), N7), N9 = m.add('N', pp(a5 + 3 * dl), C8); m.bonds.push([N9, C4]);
+          const out = (i, c, d) => m.atoms[i][1].clone().sub(c).normalize().multiplyScalar(d).add(m.atoms[i][1]);
+          const N6 = m.add('N', out(C6, V(0, 0, 0), 1.34), C6); const pN6 = m.atoms[N6][1];
+          { const b = pN6.clone().sub(m.atoms[C6][1]).normalize(), q = V(-b.y, b.x, 0);       // sp2 NH2: H's at ±120° from the C–N bond
+            m.add('H', pN6.clone().addScaledVector(b.clone().multiplyScalar(0.5).addScaledVector(q, 0.866), 1.01), N6);
+            m.add('H', pN6.clone().addScaledVector(b.clone().multiplyScalar(0.5).addScaledVector(q, -0.866), 1.01), N6); }
+          m.add('H', out(C2, V(0, 0, 0), 1.08), C2); m.add('H', out(C8, ctr, 1.08), C8);
+          // ribose attached to N9, ring roughly perpendicular to the base
+          const u = m.atoms[N9][1].clone().sub(ctr).normalize(), w = V(0, 0, 1);
+          const C1r = m.add('C', out(N9, ctr, 1.47), N9), pC1 = m.atoms[C1r][1], rc = pC1.clone().addScaledVector(u, 1.2);
+          const rp = (k) => rc.clone().addScaledVector(u, -1.2 * Math.cos(ang(72 * k))).addScaledVector(w, 1.2 * Math.sin(ang(72 * k)));
+          const C2r = m.add('C', rp(1), C1r), C3r = m.add('C', rp(2), C2r), C4r = m.add('C', rp(3), C3r), O4r = m.add('O', rp(4), C4r); m.bonds.push([O4r, C1r]);
+          const O2r = m.add('O', out(C2r, rc, 1.43), C2r), O3r = m.add('O', out(C3r, rc, 1.43), C3r);
+          m.add('H', out(O2r, rc, 0.96), O2r); m.add('H', out(O3r, rc, 0.96), O3r);
+          // C5'–O5'–Pα–O–Pβ–O–Pγ, zig-zagging away from the ring
+          let prev = C4r, at = m.atoms[C4r][1].clone(), dir = m.atoms[C4r][1].clone().sub(rc).normalize();
+          const side = new THREE.Vector3().crossVectors(dir, w).normalize();
+          const chain = ['C', 'O', 'P', 'O', 'P', 'O', 'P'], len = { C: 1.51, O: 1.5, P: 1.6 };
+          chain.forEach((el, k) => {
+            at = at.clone().addScaledVector(dir, len[el] * 0.87).addScaledVector(side, (k % 2 ? 1 : -1) * len[el] * 0.5);
+            const pPrev = m.atoms[prev][1], i = m.add(el, at, prev); prev = i;
+            if (el === 'P') {   // non-bridging oxygens, roughly tetrahedral around P
+                const a = pPrev.clone().sub(at).normalize();
+                if (k < 6) {
+                    const b = dir.clone().multiplyScalar(0.87).addScaledVector(side, ((k + 1) % 2 ? 1 : -1) * 0.5).normalize();
+                    const bis = a.clone().add(b).negate().normalize(), nrm = new THREE.Vector3().crossVectors(a, b).normalize();
+                    for (const sg of [1, -1]) m.add('O', at.clone().addScaledVector(bis.clone().multiplyScalar(0.58).addScaledVector(nrm, 0.82 * sg).normalize(), 1.5), i);
+                } else {
+                    const s1 = perpPart(w, a).normalize(), s2 = new THREE.Vector3().crossVectors(a, s1);
+                    for (let j = 0; j < 3; j++) { const th = j * 2 * Math.PI / 3;
+                        m.add('O', at.clone().addScaledVector(a.clone().multiplyScalar(-0.33).addScaledVector(s1, 0.94 * Math.cos(th)).addScaledVector(s2, 0.94 * Math.sin(th)).normalize(), 1.5), i); }
+                }
+            }
+          });
+          T.push({ name: 'ATP', atoms: cen(m.atoms), bonds: m.bonds, n: 8 }); }
+        const RAD = { C: 0.36, O: 0.34, H: 0.22, P: 0.42, N: 0.34, K: 1.1 }, COL = { C: 0x6b7280, O: 0xef4444, H: 0xf1f5f9, P: 0xf59e0b, N: 0x3b82f6, K: 0x8b5cf6 };
+        const count = {}; T.forEach(t => t.atoms.forEach(([e]) => count[e] = (count[e] || 0) + t.n));
+        const nb = T.reduce((a, t) => a + t.bonds.length * t.n, 0);
+        const meshes = {};
+        for (const e in count) { meshes[e] = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 14, 10), new THREE.MeshStandardMaterial({ color: COL[e], roughness: 0.35 }), count[e]); meshes[e].frustumCulled = false; scene.add(meshes[e]); }
+        const bondMesh = new THREE.InstancedMesh(new THREE.CylinderGeometry(1, 1, 1, 8), new THREE.MeshStandardMaterial({ color: 0x9ca3af, roughness: 0.45 }), nb);
+        bondMesh.frustumCulled = false; scene.add(bondMesh);
+        // where they may go: the matrix side, around the enzyme, but out of the protein, the active site and the main lines of sight
+        const CTR = OPEN_DIR.clone().multiplyScalar(2), RMAX = 150;
+        const sightLines = [OPEN_DIR.clone(), VIEWS.front.dir.clone(), VIEWS.newman.dir.clone()];
+        const allowed = (p) => {
+            const t = p.dot(OPEN_DIR);
+            if (t < membrane.TOP + 9 || p.distanceTo(CTR) > RMAX || p.length() < 16) return false;
+            for (const a of sightLines) { const pr = p.dot(a); if (pr > 0 && pr < 48 && p.clone().addScaledVector(a, -pr).length() < 9.5) return false; }
+            return protein.field(p) > 2.6;
+        };
+        let sd = 24680; const rr = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
+        const gauss = () => { let u = 0; while (!u) u = rr(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rr()); };
+        const mols = [];
+        T.forEach(t => { for (let i = 0; i < t.n; i++) {
+            let p, tries = 0;
+            do {   // most start scattered through the starting view (whole window, near to far), the rest close around the enzyme
+                if (rr() < 0.7) {
+                    const v = VIEWS.overview, dist = v.dist, cam = v.target.clone().addScaledVector(v.dir, dist);
+                    const f = v.dir.clone().negate(), r = new THREE.Vector3().crossVectors(f, V(0, 1, 0)).normalize(), up = new THREE.Vector3().crossVectors(r, f);
+                    const asp = window.innerWidth / window.innerHeight, tn = Math.tan(20 * deg), D = dist * (0.35 + 0.9 * rr());
+                    p = cam.clone().addScaledVector(f, D).addScaledVector(r, (2 * rr() - 1) * tn * asp * D).addScaledVector(up, (2 * rr() - 1) * tn * D);
+                } else p = CTR.clone().add(V(rr() - 0.5, rr() - 0.5, rr() - 0.5).multiplyScalar(140));
+            } while (!allowed(p) && ++tries < 400);
+            mols.push({ t, p, v: V(gauss(), gauss(), gauss()).multiplyScalar(2), q: new THREE.Quaternion().setFromAxisAngle(V(rr() - 0.5, rr() - 0.5, rr() - 0.5).normalize(), 6.28 * rr()),
+                        w: V(rr() - 0.5, rr() - 0.5, rr() - 0.5).normalize(), ws: 0.6 + 1.2 * rr() });
+        } });
+        const M = new THREE.Matrix4(), q0 = new THREE.Quaternion(), a = V(0, 0, 0), b = V(0, 0, 0), dqm = new THREE.Quaternion(), prev = V(0, 0, 0);
+        function step(dt) {
+            for (const m of mols) {
+                const kick = m.t.name === 'water' ? 16 : m.t.name === 'K+' ? 12 : 9;
+                m.v.x += gauss() * kick * dt; m.v.y += gauss() * kick * dt; m.v.z += gauss() * kick * dt;
+                m.v.multiplyScalar(Math.exp(-1.4 * dt)); const vmax = m.t.name === 'water' ? 10 : 7; if (m.v.length() > vmax) m.v.setLength(vmax);
+                prev.copy(m.p); m.p.addScaledVector(m.v, dt);
+                if (!allowed(m.p)) { m.p.copy(prev); m.v.multiplyScalar(-0.8); }
+                dqm.setFromAxisAngle(m.w, m.ws * dt); m.q.multiply(dqm);
+            }
+            const ix = {}; let ib = 0;
+            for (const m of mols) {
+                const w = m.t.atoms.map(([e, l]) => l.clone().applyQuaternion(m.q).add(m.p));
+                m.t.atoms.forEach(([e], k) => { const r = RAD[e]; M.compose(w[k], q0, V(r, r, r)); meshes[e].setMatrixAt(ix[e] = (ix[e] || 0), M); ix[e]++; });
+                for (const [i0, i1] of m.t.bonds) {
+                    a.copy(w[i0]); b.copy(w[i1]); const d = b.clone().sub(a), L = d.length();
+                    M.compose(a.clone().addScaledVector(d, 0.5), new THREE.Quaternion().setFromUnitVectors(UP, d.multiplyScalar(1 / L)), V(0.1, L, 0.1)); bondMesh.setMatrixAt(ib++, M);
+                }
+            }
+            for (const e in meshes) meshes[e].instanceMatrix.needsUpdate = true;
+            bondMesh.instanceMatrix.needsUpdate = true;
+        }
+        step(0);
+        return { step, mols, allowed };
+    })();
+
+    // =====================================================================
+    //  Curved electron-pushing arrows (bright red; only the glow pulses)
+    // =====================================================================
+    const arrows = [];
+    const CAMDIR = VIEWS.front.dir.clone();
+    function makeArrow(from, to, sign, bulge) {
+        const d = to.clone().sub(from); const du = d.clone().normalize();
+        const h = new THREE.Vector3().crossVectors(CAMDIR, du).normalize().multiplyScalar(sign);   // bulge in the screen plane of the default view
+        const ctrl = from.clone().add(to).multiplyScalar(0.5).addScaledVector(h, bulge);
+        const curve = new THREE.QuadraticBezierCurve3(from, ctrl, to);
+        const L = curve.getLength(), headLen = 0.42, tEnd = 1 - headLen / L;
+        const pts = []; for (let i = 0; i <= 40; i++) pts.push(curve.getPoint(i / 40 * tEnd));
+        const path = new THREE.CatmullRomCurve3(pts);
+        const mat = new THREE.MeshStandardMaterial({ color: 0xff2a2a, emissive: 0xb91c1c, roughness: 0.4, transparent: true, opacity: 1 });
+        const glowMat = new THREE.MeshBasicMaterial({ color: 0xff3b3b, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false });
+        const grp = new THREE.Group();
+        grp.add(new THREE.Mesh(new THREE.TubeGeometry(path, 60, 0.055, 10, false), mat));
+        const glow = new THREE.Mesh(new THREE.TubeGeometry(path, 60, 0.15, 10, false), glowMat); glow.renderOrder = 15; grp.add(glow);
+        const head = new THREE.Mesh(new THREE.ConeGeometry(0.16, headLen, 18), mat);
+        const pBase = curve.getPoint(tEnd), tan = to.clone().sub(pBase).normalize();
+        head.position.copy(pBase).addScaledVector(tan, headLen / 2); head.quaternion.setFromUnitVectors(UP, tan); grp.add(head);
+        const headGlow = new THREE.Mesh(new THREE.ConeGeometry(0.3, headLen * 1.5, 18), glowMat); headGlow.position.copy(head.position); headGlow.quaternion.copy(head.quaternion); grp.add(headGlow);
+        scene.add(grp);
+        arrows.push({ grp, mat, glowMat, curve });
+    }
+    (() => {
+        const H3 = G0.H3L, H2 = G0.H2L, C2 = G0.C2, C3 = G0.C3;
+        // 1) base lone pair → H on C3
+        makeArrow(NBpos.clone().addScaledVector(dL3, -0.35), H3.clone().addScaledVector(dL3, 0.3), 1, 0.8);
+        // 2) C3–H σ bond → C2–C3 (new π bond)
+        makeArrow(C3.clone().lerp(H3, 0.5), C2.clone().lerp(C3, 0.5), -1, 0.75);
+        // 3) C2–H σ bond → H–N5 (hydride to FAD)
+        makeArrow(C2.clone().lerp(H2, 0.5), H2.clone().lerp(N5pos, 0.5), -1, 0.8);
+    })();
+
+    // =====================================================================
+    //  p orbitals (same shape/colour as the E2 & SN2 simulations)
+    // =====================================================================
+    const makeOrbitalMat = (color) => new THREE.MeshPhysicalMaterial({
+        color, transparent: true, opacity: 0.6, roughness: 0.15, metalness: 0,
+        clearcoat: 0.8, clearcoatRoughness: 0.2, side: THREE.DoubleSide, depthWrite: false
+    });
+    const redOrbitalMat = makeOrbitalMat(0xef4444);
+    const blueOrbitalMat = makeOrbitalMat(0x3b82f6);
+    function createPOrbitalLobeGeometry() {
+        const pts = [], L = 1.4, R = 0.5, yc = L - R, Nn = 60, Nc = 40;
+        for (let i = 0; i <= Nn; i++) { const t = i / Nn; pts.push(new THREE.Vector2(R * Math.sin(t * Math.PI / 2), t * yc)); }
+        for (let j = 1; j <= Nc; j++) { const ph = j / Nc * Math.PI / 2; pts.push(new THREE.Vector2(Math.max(1e-4, R * Math.cos(ph)), yc + R * Math.sin(ph))); }
+        return new THREE.LatheGeometry(pts, 48);
+    }
+    const lobeGeo = createPOrbitalLobeGeometry();
+    function makePOrbital() {
+        const g = new THREE.Group();
+        const up = new THREE.Mesh(lobeGeo, redOrbitalMat); up.renderOrder = 12;
+        const dn = new THREE.Mesh(lobeGeo, blueOrbitalMat); dn.rotation.x = Math.PI; dn.renderOrder = 12;
+        g.add(up); g.add(dn); scene.add(g); return g;
+    }
+    const pOrb = { C2: makePOrbital(), C3: makePOrbital() };
+
+    // glows for the two anti-periplanar H's
+    const glowH2 = makeGlow(0xfacc15, 1.35), glowH3 = makeGlow(0xfacc15, 1.35);
+    const haloH2 = makeGlow(0xfacc15, 1.3), haloH3 = makeGlow(0xfacc15, 1.3);
+    // keep the H glow on the hydrogens only: depth-tested, so it never washes over the neighbouring carbons
+    [glowH2, glowH3, haloH2, haloH3].forEach(g => { g.material.depthTest = true; g.renderOrder = 55; });
+    const subHalo = makeGlow(0xfacc15, 10);
+    const siteWall = (() => {
+        const c = document.createElement('canvas'); c.width = c.height = 256;
+        const g = c.getContext('2d'); const grd = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+        grd.addColorStop(0, 'rgba(255,255,255,1)'); grd.addColorStop(0.72, 'rgba(255,255,255,1)'); grd.addColorStop(1, 'rgba(255,255,255,0)');
+        g.fillStyle = grd; g.fillRect(0, 0, 256, 256);
+        const m = new THREE.Mesh(new THREE.CircleGeometry(60, 64), new THREE.MeshBasicMaterial({ color: 0x2a2f38, map: new THREE.CanvasTexture(c), transparent: true, depthWrite: true }));
+        m.renderOrder = 45; scene.add(m); return m;
+    })();
+    const atomGlows = Object.keys(S).map(() => makeGlow(0xfde047, 1.7));
+
+    // =====================================================================
+    //  Floating labels
+    // =====================================================================
+    const labelsEl = document.getElementById('labels');
+    const labels = [];
+    function addLabel(html, cls, posFn, visFn, dx = 0, dy = 0) {
+        const el = document.createElement('div'); el.className = 'flab ' + (cls || ''); el.innerHTML = html; labelsEl.appendChild(el);
+        const L = { el, posFn, visFn, dx, dy, html }; labels.push(L); return L;
+    }
+    const pv = new THREE.Vector3();
+    function toScreen(p) { pv.copy(p).project(camera); return { x: (pv.x + 1) / 2 * window.innerWidth, y: (1 - pv.y) / 2 * window.innerHeight, z: pv.z }; }
+
+    const st = { p: 0, mode: 'anti', alpha: 0, playing: false, labels: false, charges: true, arrows: false, orbitals: false, enz: 0.35, res: 1.0, resEff: 0, t: 0, hoverC3: false };
+    const atomLabelsOn = () => st.labels;
+
+    addLabel('C2', 'small', () => S.C2.mesh.position, atomLabelsOn, -16, 14);
+    addLabel('C3', 'small', () => S.C3.mesh.position, atomLabelsOn, 16, -14);
+    addLabel('H<sup>−</sup>', 'hl', () => S.H2L.mesh.position, () => st.labels && st.p > 0.4 && st.p < 0.96, -14, 0);
+    addLabel('H<sup>+</sup>', 'hl', () => S.H3L.mesh.position, () => st.labels && st.p > 0.4 && st.p < 0.96, 14, 0);
+    addLabel('Arg (CO₂⁻ clamp)', 'res', () => clampA.CZ.mesh.position, () => st.labels && st.resEff > 0.15, 0, -16);
+    addLabel('Arg (CO₂⁻ clamp)', 'res', () => clampB.CZ.mesh.position, () => st.labels && st.resEff > 0.15, 0, 16);
+    addLabel('Arg (base, B:)', 'res base', () => baseArg.CZ.mesh.position, () => st.labels && st.resEff > 0.15, 0, -16);
+    addLabel('FAD', 'res fad', () => fad.C10a.mesh.position, () => st.labels && st.resEff > 0.15 && st.p < 0.96, 0, 22);
+    addLabel('N5', 'small', () => fad.N5.mesh.position, () => st.labels && st.resEff > 0.15 && st.p < 0.96, -16, 0);
+    addLabel('FADH₂', 'res fad', () => fad.C10a.mesh.position, () => st.labels && st.resEff > 0.15 && st.p >= 0.96, 0, 22);
+    addLabel('SUCCINATE', 'succ', () => st.subCen || S.C3.mesh.position, () => st.p < 0.26, 0, -34);
+    const lblNoBridge = addLabel('✕ NO SALT BRIDGE', 'bad', () => S.C4.mesh.position, () => st.mode === 'gauche' && st.p > 0.26, 0, -22);
+    const lblProd = addLabel('(<i>E</i>)-FUMARATE', 'prod', () => V(0, 0, 0), () => st.p >= 0.96, 0, 0);
+
+    // ---- charges: formal charges circled, partial charges as δ+/δ− (blue = positive, red = negative)
+    const prog = () => { const s = smooth(0.40, 0.95, st.p); return smooth(0.12, 0.88, s); };   // fraction of H transferred
+    function addCharge(kind, sign, posFn, alphaFn, dx = 0, dy = 0) {
+        const glyph = sign > 0 ? '<line x1="8" y1="14" x2="20" y2="14"/><line x1="14" y1="8" x2="14" y2="20"/>' : '<line x1="8" y1="14" x2="20" y2="14"/>';
+        const html = kind === 'formal'
+            ? `<svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="14" cy="14" r="11.5" stroke-width="2.2"/>${glyph}</svg>`
+            : (sign > 0 ? 'δ+' : 'δ−');
+        const L = addLabel(html, (kind === 'formal' ? 'fc ' : 'pc ') + (sign > 0 ? 'pos' : 'neg'), posFn, () => alphaFn() > 0.02, dx, dy);
+        L.alphaFn = alphaFn; return L;
+    }
+    const off = (atom, vfn, d) => () => atom.mesh.position.clone().addScaledVector(vfn(), d);
+    const away = (atom, from) => () => atom.mesh.position.clone().sub(from.mesh.position).normalize();
+    const bindFade = () => smooth(0.26, 0.33, st.p);                 // charge labels fade in once the substrate has bound
+    const resA = () => st.charges ? clamp(st.resEff * 1.4, 0, 1) * bindFade() : 0;
+    // substrate carboxylates (formal −1 each, kept in the product)
+    // formal charges sit beside their atom on screen, on the side away from the substrate's centre (set when drawing labels)
+    const side = (L) => { L.side = 26; return L; };
+    side(addCharge('formal', -1, () => S.O1b.mesh.position, () => st.charges ? bindFade() : 0));
+    side(addCharge('formal', -1, () => S.O4b.mesh.position, () => st.charges ? bindFade() : 0));
+    // arginine clamps: guanidinium +, salt-bridge N–H hydrogens δ+
+    [clampA, clampB].forEach(cl => {
+        side(addCharge('formal', 1, () => cl.CZ.mesh.position, resA));
+        cl.hb.forEach(h => addCharge('partial', 1, () => h.mesh.position, resA, -22, 0));    // δ+ just left of each H
+    });
+    // active-site base: basic N δ− (lone pair) → guanidinium + after it takes the proton
+    addCharge('partial', -1, off(baseArg.Nb, () => baseArg.n, 0.55), () => resA() * (1 - smooth(0.35, 0.6, prog())));
+    side(addCharge('formal', 1, () => baseArg.CZ.mesh.position, () => resA() * smooth(0.45, 0.75, prog())));
+    // flavin: carbonyl O's δ−; N1 carries the − charge of FADH⁻ until it is protonated (→ FADH₂)
+    side(addCharge('formal', -1, () => fad.N1.mesh.position, () => resA() * smooth(0.55, 0.8, prog()) * (1 - smooth(0.95, 0.99, st.p))));
+
+    const reactiveEl = document.getElementById('reactive-label');
+
+    // =====================================================================
+    //  Per-frame state update
+    // =====================================================================
+    const qI = new THREE.Quaternion();
+    const q0 = new THREE.Quaternion().setFromAxisAngle(V(0.35, 1, 0.25).normalize(), 2.3);
+    const T0 = OPEN_DIR.clone().multiplyScalar(22);
+    const stepTitle = document.getElementById('step-title'), stepText = document.getElementById('step-text'), stepBox = document.getElementById('step-box');
+    const dihC = document.getElementById('dih-c'), dihH = document.getElementById('dih-h');
+
+    const STEPS = [
+        { until: 0.04, title: 'Free substrate', anti: 'Succinate dianion is free in solution. Rotation about C2–C3 is fast, so all conformers interconvert.', gauche: 'Succinate dianion is free in solution. Rotation about C2–C3 is fast, so all conformers interconvert.' },
+        { until: 0.27, title: 'Binding', anti: 'Succinate enters the active site. Arginine side chains close in (induced fit) and grip <b>both</b> carboxylates with salt bridges.', gauche: 'A <b>gauche</b> conformer enters the site. The C1 carboxylate can reach its arginine, but the C4 carboxylate points the wrong way.' },
+        { until: 0.40, title: 'Michaelis complex (E·S)', anti: 'The two clamps hold succinate <b>extended</b> (carboxylates anti, 180°). That fixes the H on C2 facing FAD N5 and the H on C3 facing the base <b>anti-periplanar</b> (H–C–C–H = 180°).', gauche: 'The facing H\'s are still anti-periplanar, but the carboxylates are only 60° apart. The C4 carboxylate has <b>no salt bridge</b>, so SDH does not hold this conformer.' },
+        { until: 0.62, title: 'Elimination begins', anti: 'The base pulls <b>H⁺</b> from C3 while C2 hands <b>H⁻</b> (hydride) to N5 of FAD. Both C–H bonds stretch together (dashed), E2-like.', gauche: 'Hypothetical: the same anti-periplanar H⁺/H⁻ removal, starting from the gauche conformer.' },
+        { until: 0.73, title: 'Transition state', anti: 'Both C–H bonds are half broken. The developing p orbitals on C2 and C3 are <b>parallel</b>, which is only possible because the two H\'s were anti-periplanar.', gauche: 'The p orbitals are parallel here too, but the carboxylates are now on the <b>same side</b> of the forming π bond.' },
+        { until: 0.96, title: 'π bond forms', anti: 'C2 and C3 rehybridise sp³ → sp². The substituents that stay swing into one plane; the carboxylates, anti in the complex, end up <b>trans</b>. The flavin is now FADH⁻ (− on N1).', gauche: 'C2 and C3 become sp². Because the carboxylates started gauche, they end up <b>cis</b>.' },
+        { until: 2.00, title: 'Products', anti: '<b>(E)-Fumarate</b> + FADH₂ (N5–H, then N1 protonated) + protonated base. Anti binding of the carboxylates makes the elimination stereospecific: no maleate forms.', gauche: '<b>(Z)-Maleate</b>: what a gauche-bound substrate would give. SDH never forms it, because its active site binds only the extended (anti) succinate.' }
+    ];
+
+    function update(dt) {
+        st.t += dt;
+        const p = st.p;
+        const s = smooth(0.40, 0.95, p);
+        // the elimination needs an anti-periplanar H on C3: once it starts, settle any part-way rotation
+        if (s > 0 && st.alpha !== 0 && st.alpha !== -120) { st.alpha = st.alpha < -60 ? -120 : 0; alphaAnim = null; drag = null; }
+        const newMode = st.alpha < -60 ? 'gauche' : 'anti';
+        if (newMode !== st.mode) setModeText(newMode);
+        const mode = st.mode;
+        const bnd = smooth(0.02, 0.27, p);
+        const g = substrateGeom(s, st.alpha);
+        const qm = q0.clone().slerp(qI, bnd);
+        const T = T0.clone().multiplyScalar(1 - bnd);
+        st.qm = qm; st.T = T;
+        for (const k in S) S[k].mesh.position.copy(g[k]).applyQuaternion(qm).add(T);
+        shadeModeButtons();
+
+        // induced fit: clamps and base move in as the substrate arrives
+        // residues and FAD appear only as the substrate arrives: they fade in while swinging into place (induced fit)
+        const fit = smooth(0.13, 0.29, p);
+        st.resEff = st.res * smooth(0.13, 0.25, p);
+        resOffset.clampA.copy(clampA.u).multiplyScalar(3.0 * (1 - fit));
+        resOffset.clampB.copy(clampB.u).multiplyScalar(3.0 * (1 - fit));
+        resOffset.base.copy(dL3).multiplyScalar(3.5 * (1 - fit));
+        resOffset.fad.copy(dL2).multiplyScalar(2.5 * (1 - fit));
+        for (const a of enzAtoms) { a.mesh.position.copy(a.base).add(resOffset[a.res]); setAtomAlpha(a, st.resEff); }
+        setAtomAlpha(fad.HN1, st.resEff * smooth(0.95, 0.99, p));
+        fad.N5.mesh.position.addScaledVector(N5_UP, N5_RISE * smooth(0.12, 0.88, s));   // N5 pyramidalises as it takes H⁻
+
+        // bond orders
+        const e = smooth(0.12, 0.88, s);
+        bondC2H.order = 1 - e; bondC3H.order = 1 - e;
+        bondHN5.order = e; bondHNb.order = e;
+        bondPi.order = s; piOffsetAmt = 0.13 * smooth(0.25, 0.75, s);
+        // as in the E2 simulation: one synchronized "transition window" (20–70% of the elimination) in which the
+        // breaking C–H bonds, the forming H···N5 (FAD) and H···N (base) bonds and the new π bond are all dashed;
+        // before it the C–H bonds are solid and nothing is forming; after it the C–H bonds are gone and the new bonds are solid
+        const inWin = s >= 0.20 && s <= 0.70, after = s > 0.70;
+        [bondC2H, bondC3H].forEach(b => b.look = { solid: s < 0.20 ? 1 : 0, dots: inWin ? 1 : 0 });
+        [bondHN5, bondHNb].forEach(b => b.look = { solid: after ? 1 : 0, dots: inWin ? 1 : 0 });
+        bondPi.look = { solid: after ? 1 : 0, dots: inWin ? 1 : 0 };
+        [S.H2L, S.H3L].forEach(a => { const top = s > 0.1; a.mat.depthTest = !top; a.mesh.renderOrder = top ? 61 : 0; });
+        piOffsetAmt = 0.13 * smooth(0.20, 0.35, s);                       // the two C=C lines separate gradually as the π bond appears
+        fad.bondN1H.order = smooth(0.95, 0.99, p);
+        enzBonds.forEach(b => b.vis = st.resEff);
+        bondHN5.vis = 1; bondHNb.vis = 1;
+        saltBridges.forEach(b => {
+            const d = b.a.mesh.position.distanceTo(b.b.mesh.position);
+            b.vis = (st.charges ? 1 : 0) * st.resEff * smooth(0.22, 0.29, p) * (1 - smooth(3.3, 3.8, d));
+        });
+        allBonds.forEach(b => b.update());
+
+        // transferred H's: keep them fully visible even if the enzyme is hidden
+        // glow (reactive conformation) — fades quickly once the reaction runs
+        const pulse = 0.5 + 0.5 * Math.sin(st.t * 5.0);
+        const antiF = 1 - smooth(2, 12, c3Angles(st.alpha).dev);          // only while the H's really are anti-periplanar
+        const gA = smooth(0.25, 0.29, p) * (1 - smooth(0.40, 0.44, p)) * antiF;
+        for (const k in S) S[k].mat.emissive.setRGB(0, 0, 0);
+        const hl = (st.hoverC3 || drag) ? 0.3 : 0;                          // blue highlight on the draggable C3 end
+        ['C4', 'O4a', 'O4b', 'H3'].forEach(k => S[k].mat.emissive.setRGB(0.12 * hl, 0.3 * hl, 0.9 * hl));
+        [[S.H2L, glowH2, haloH2], [S.H3L, glowH3, haloH3]].forEach(([a, sp, halo]) => {
+            sp.position.copy(a.mesh.position); sp.material.opacity = gA * (0.8 + 0.2 * pulse);
+            sp.scale.setScalar(0.8 + 0.25 * pulse);                         // bright core just around the H
+            halo.position.copy(a.mesh.position); halo.material.opacity = gA * (0.3 + 0.4 * pulse);
+            halo.scale.setScalar(1.15 + 0.35 * pulse);                      // soft pulsing halo, smaller than the C–H bond
+            a.mat.color.set(ELEM.H.c).lerp(YELLOW, 0.9 * gA); a.mat.emissive.copy(YELLOW).multiplyScalar((0.6 + 0.4 * pulse) * gA);
+            if (a === S.H3L && gA < 0.05) a.mat.emissive.setRGB(0.12 * hl, 0.3 * hl, 0.9 * hl);
+        });
+
+        // the incoming succinate glows yellow (atoms keep their normal colours) until it is bound
+        const gG = 1 - smooth(0.25, 0.31, p);
+        const cen = V(0, 0, 0); for (const k in S) cen.add(S[k].mesh.position); cen.multiplyScalar(1 / Object.keys(S).length);
+        subHalo.position.copy(cen); subHalo.material.opacity = gG * (0.3 + 0.2 * pulse); subHalo.scale.setScalar(10 + 1.5 * pulse);
+        Object.keys(S).forEach((k, i) => { const g = atomGlows[i]; g.position.copy(S[k].mesh.position);
+            g.material.opacity = gG * (0.55 + 0.3 * pulse); g.scale.setScalar((S[k].el === 'H' ? 1.2 : 1.7) * (1 + 0.15 * pulse)); });
+        st.subCen = cen;
+
+        // arrows
+        const aA = st.arrows ? smooth(0.30, 0.34, p) * (1 - smooth(0.55, 0.63, p)) : 0;
+        arrows.forEach(ar => {
+            ar.grp.visible = aA > 0.01; ar.mat.opacity = aA; ar.mat.depthWrite = aA > 0.98;
+            ar.glowMat.opacity = aA * (0.12 + 0.3 * pulse);
+        });
+
+        // p orbitals
+        const po = st.orbitals ? smooth(0.44, 0.62, p) : 0;
+        const pax = PAXIS.clone().applyQuaternion(qm);
+        [['C2', pOrb.C2], ['C3', pOrb.C3]].forEach(([k, grp]) => {
+            grp.visible = po > 0.01;
+            grp.position.copy(S[k].mesh.position); grp.quaternion.setFromUnitVectors(UP, pax);
+            grp.scale.setScalar(0.55 + 0.45 * s);
+        });
+        redOrbitalMat.opacity = 0.6 * po; blueOrbitalMat.opacity = 0.6 * po;
+
+        // protein (100% = fully opaque)
+        // zoomed out, the protein becomes more solid so the whole membrane-bound enzyme reads clearly;
+        // close in (front / Newman views) it keeps the slider's opacity so the active site shows through
+        const far = smooth(45, 95, camera.position.length());
+        const eff = Math.min(0.93, st.enz * (1 + 1.65 * far));
+        // zoomed in on the active site (as before the membrane was added): lining in front of the site fades to see-through,
+        // and a dark grey wall behind the site hides the bilayer and everything else beyond it
+        const camD = camera.position.length(), near = 1 - smooth(40, 70, camD), vdir = camera.position.clone().normalize();
+        protein.colMesh.visible = protein.depthMesh.visible = protein.siteMesh.visible = st.enz > 0.005;
+        protein.U.uExt.value = eff; protein.U.uFront.value = Math.min(0.35, st.enz);
+        protein.U.uNear.value = near; protein.U.uView.value.copy(vdir);
+        siteWall.visible = near > 0.01; siteWall.material.opacity = near;
+        siteWall.position.copy(vdir).multiplyScalar(-12); siteWall.lookAt(camera.position);
+
+        // ---- labels
+        lblProd.el.innerHTML = mode === 'anti' ? '(<i>E</i>)-FUMARATE' : '(<i>Z</i>)-MALEATE';
+        lblProd.el.className = 'flab prod' + (mode === 'anti' ? '' : ' z');
+        let maxY = -1e9, minY = 1e9, cx = 0, nC = 0;
+        for (const k in S) { const sc = toScreen(S[k].mesh.position); maxY = Math.max(maxY, sc.y); minY = Math.min(minY, sc.y); cx += sc.x; nC++; }
+        cx /= nC;
+        for (const L of labels) {
+            const vis = L.visFn();
+            if (!vis) { L.el.style.display = 'none'; continue; }
+            let x, y;
+            if (L === lblProd) { x = cx; y = Math.max(40, minY - 44); }      // above the product
+            else if (L === lblNoBridge) { x = cx; y = maxY + 40; }            // below the substrate
+            else { const sc = toScreen(L.posFn()); if (sc.z > 1) { L.el.style.display = 'none'; continue; } x = sc.x + (L.side ? (sc.x < cx ? -L.side : L.side) : L.dx); y = sc.y + L.dy; }
+            L.el.style.display = 'block';
+            if (L.alphaFn) L.el.style.opacity = L.alphaFn().toFixed(3);
+            L.el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, -50%)`;
+        }
+        reactiveEl.style.opacity = gA.toFixed(3);
+        reactiveEl.style.visibility = gA > 0.01 ? 'visible' : 'hidden';
+        reactiveEl.style.transform = `translate(${(window.innerWidth / 2).toFixed(1)}px, 22px) translate(-50%, 0)`;   // top centre, clear of the 3D labels
+
+        // ---- info panel
+        const dc = Math.abs(dihedral(S.C1.mesh.position, S.C2.mesh.position, S.C3.mesh.position, S.C4.mesh.position));
+        const tag = s > 0.9 ? (dc > 150 ? ' (trans)' : ' (cis)') : dc > 165 ? ' (anti)' : Math.abs(dc - 60) < 12 ? ' (gauche)' : Math.abs(dc - 120) < 12 ? ' (eclipsed)' : '';
+        dihC.textContent = Math.round(dc) + '°' + tag;
+        dihC.style.color = dc > 150 ? '#4ade80' : dc < 75 ? '#fb923c' : '#e5e7eb';
+        if (s < 0.6) {
+            const dh = Math.abs(dihedral(S.H2L.mesh.position, S.C2.mesh.position, S.C3.mesh.position, S.H3L.mesh.position));
+            dihH.textContent = Math.round(dh) + '°' + (dh > 170 ? ' (anti-periplanar)' : '');
+            dihH.style.color = dh > 170 ? '#facc15' : '#e5e7eb';
+        } else { dihH.textContent = '— (H\'s transferred)'; dihH.style.color = '#9ca3af'; }
+        const step = STEPS.find(x => p < x.until);
+        stepTitle.textContent = step.title + (mode === 'gauche' && p > 0.04 ? ' — hypothetical' : '');
+        stepText.innerHTML = step[mode] + (Math.abs(p - BOUND_P) < 0.004 && !st.playing
+            ? '<div style="margin-top:.45rem;color:#4ade80;font-weight:700">Paused on the bound complex. Rotate and zoom to inspect the salt bridges and charges, then press ▶ to continue.</div>' : '');
+        stepBox.classList.toggle('warn', mode === 'gauche' && p > 0.04);
+        document.querySelectorAll('#ticks span').forEach((el, i) => {
+            const at = [0, 0.34, 0.675, 1][i]; el.classList.toggle('on', Math.abs(p - at) < 0.06);
+        });
+        reactiveEl.classList.toggle('gauche', mode === 'gauche');
+    }
+
+    // =====================================================================
+    //  UI wiring
+    // =====================================================================
+    const progress = document.getElementById('progress'), playBtn = document.getElementById('play-btn');
+    function setPlaying(on) { st.playing = on; playBtn.textContent = on ? '❚❚' : '▶'; }
+    const BOUND_P = 0.34;
+    playBtn.addEventListener('click', () => {
+        if (!st.playing && st.p >= 0.999) { st.p = 0; goView('overview', 1.2); }
+        if (!st.playing && st.p < 0.05) goView('front', 3.8);          // the view swings to the active site as the substrate binds
+        setPlaying(!st.playing);
+    });
+    document.getElementById('reset-btn').addEventListener('click', () => { setPlaying(false); st.p = 0; progress.value = 0; goView('overview', 1.4); });
+    progress.addEventListener('input', () => { setPlaying(false); st.p = progress.value / 1000; });
+    window.addEventListener('keydown', (ev) => {
+        if (ev.code === 'Space' && ev.target.tagName !== 'INPUT') { ev.preventDefault(); playBtn.click(); }
+    });
+
+    const btnAnti = document.getElementById('mode-anti'), btnGauche = document.getElementById('mode-gauche');
+    let lastShade = null;
+    function shadeModeButtons() {           // shading slides between the two buttons as C3 turns
+        if (lastShade === st.alpha) return; lastShade = st.alpha;
+        const a = clamp(1 + st.alpha / 120, 0, 1), b = 1 - a;
+        const mix = (t) => `rgb(${Math.round(lerp(55, 37, t))},${Math.round(lerp(65, 99, t))},${Math.round(lerp(81, 235, t))})`;   // gray-700 → blue-600
+        btnAnti.style.background = mix(a); btnGauche.style.background = mix(b);
+    }
+    let alphaAnim = null, drag = null;
+    function rotateTo(target, dur = 1.0) {
+        if (st.p >= 0.40) return;                      // conformation is fixed once the elimination has started
+        alphaAnim = { from: st.alpha, to: target, t: 0, dur };
+    }
+    function stepAlpha(dt) {
+        if (!alphaAnim) return;
+        alphaAnim.t = Math.min(1, alphaAnim.t + dt / alphaAnim.dur);
+        st.alpha = lerp(alphaAnim.from, alphaAnim.to, smooth(0, 1, alphaAnim.t));
+        if (alphaAnim.t >= 1) { st.alpha = alphaAnim.to; alphaAnim = null; }
+    }
+    function setModeText(m) {
+        st.mode = m;
+        const pr = document.getElementById('prod-row');
+        pr.innerHTML = m === 'anti' ? '(<i>E</i>)-Fumarate' : '(<i>Z</i>)-Maleate <span style="font-weight:500">(not formed)</span>';
+        pr.style.color = m === 'anti' ? '#4ade80' : '#fb923c';
+        reactiveEl.innerHTML = m === 'anti' ? 'REACTIVE CONFORMATION'
+                                            : 'GAUCHE CONFORMER';
+    }
+    btnAnti.addEventListener('click', () => rotateTo(0));
+    btnGauche.addEventListener('click', () => rotateTo(-120));
+
+    // ---- drag the C3 end (C4 carboxylate or a C3 hydrogen) to rotate about the C2–C3 bond
+    const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2();
+    const C3_END = ['C4', 'O4a', 'O4b', 'H3', 'H3L'];
+    const canDrag = () => st.p < 0.40 && !st.playing;
+    function pickC3(ev) {
+        const r = renderer.domElement.getBoundingClientRect();
+        ndc.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
+        raycaster.setFromCamera(ndc, camera);
+        const hits = raycaster.intersectObjects(C3_END.map(k => S[k].mesh), false);
+        if (!hits.length) return null;
+        return C3_END.find(k => S[k].mesh === hits[0].object);
+    }
+    function worldOf(local) { return local.clone().applyQuaternion(st.qm).add(st.T); }
+    function screenAt(key, al) { return toScreen(worldOf(substrateGeom(0, al)[key])); }
+    wrapEl.addEventListener('pointerdown', (ev) => {
+        if (!canDrag()) return;
+        const key = pickC3(ev); if (!key) return;
+        ev.stopPropagation(); ev.preventDefault();
+        alphaAnim = null;
+        const sc = screenAt(key, st.alpha);
+        drag = { key, offX: ev.clientX - sc.x, offY: ev.clientY - sc.y };
+        controls.enabled = false; renderer.domElement.style.cursor = 'grabbing';
+    }, true);
+    window.addEventListener('pointermove', (ev) => {
+        if (!drag) {
+            if (ev.target !== renderer.domElement) return;
+            st.hoverC3 = canDrag() && !!pickC3(ev);
+            renderer.domElement.style.cursor = st.hoverC3 ? 'grab' : '';
+            return;
+        }
+        // pick the rotation that puts the grabbed atom closest to the pointer (searched near the current angle)
+        const tx = ev.clientX - drag.offX, ty = ev.clientY - drag.offY;
+        let best = st.alpha, bestD = 1e18;
+        for (let a = st.alpha - 40; a <= st.alpha + 40; a += 1) {
+            const al = clamp(a, -135, 15), sc = screenAt(drag.key, al);
+            const d = (sc.x - tx) * (sc.x - tx) + (sc.y - ty) * (sc.y - ty);
+            if (d < bestD) { bestD = d; best = al; }
+        }
+        if (Math.abs(best) < 6) best = 0; else if (Math.abs(best + 120) < 6) best = -120;   // gentle snap
+        st.alpha = best;
+    });
+    window.addEventListener('pointerup', () => {
+        if (!drag) return;
+        drag = null; controls.enabled = true; renderer.domElement.style.cursor = st.hoverC3 ? 'grab' : '';
+        rotateTo(st.alpha < -60 ? -120 : 0, 0.45);      // settle into the nearer staggered conformer
+    });
+
+    // ---- collapsible side drawers
+    document.querySelectorAll('.drawer-tab').forEach(t => t.addEventListener('click', () => document.getElementById(t.dataset.drawer).classList.toggle('collapsed')));
+
+    function toggle(id, key) {
+        const b = document.getElementById(id);
+        b.addEventListener('click', () => { st[key] = !st[key]; b.classList.toggle('active', st[key]); });
+    }
+    toggle('tg-labels', 'labels'); toggle('tg-charges', 'charges'); toggle('tg-arrows', 'arrows'); toggle('tg-orbitals', 'orbitals');
+
+    const MAX_ENZ_OPACITY = 0.35;     // slider 100% = 0.35 opacity (the protein never goes fully solid)
+    const enzSlider = document.getElementById('enz-slider');
+    enzSlider.addEventListener('input', () => { st.enz = MAX_ENZ_OPACITY * enzSlider.value / 100; document.getElementById('enz-val').textContent = enzSlider.value + '%'; });
+
+    // smooth camera transitions between preset views (target and viewing direction both glide)
+    let camAnim = null;
+    function goView(name, dur = 1.4) {
+        const v = VIEWS[name];
+        const off = camera.position.clone().sub(controls.target);
+        camAnim = { t: 0, dur, fromT: controls.target.clone(), toT: v.target.clone(), fromDir: off.clone().normalize(), fromDist: off.length(),
+                    toDir: v.dir.clone().normalize(), toDist: v.dist };
+        ['front', 'newman'].forEach(n => document.getElementById('view-' + n).classList.toggle('active', n === name));
+    }
+    ['front', 'newman'].forEach(n => document.getElementById('view-' + n).addEventListener('click', () => goView(n)));
+    renderer.domElement.addEventListener('pointerdown', () => { camAnim = null; ['front', 'newman'].forEach(n => document.getElementById('view-' + n).classList.remove('active')); });
+    renderer.domElement.addEventListener('wheel', () => { if (camAnim) camAnim = null; }, { passive: true });
+    function stepCamera(dt) {
+        if (!camAnim) return;
+        camAnim.t = Math.min(1, camAnim.t + dt / camAnim.dur);
+        const k = smooth(0, 1, camAnim.t);
+        const qa = new THREE.Quaternion().setFromUnitVectors(camAnim.fromDir, camAnim.toDir);
+        const dir = camAnim.fromDir.clone().applyQuaternion(new THREE.Quaternion().slerp(qa, k));
+        if (camAnim.fromDir.dot(camAnim.toDir) < -0.999) dir.copy(camAnim.fromDir).lerp(camAnim.toDir, k).normalize();
+        controls.target.copy(camAnim.fromT).lerp(camAnim.toT, k);
+        camera.position.copy(controls.target).addScaledVector(dir, lerp(camAnim.fromDist, camAnim.toDist, k));
+        camera.lookAt(controls.target);
+        if (camAnim.t >= 1) camAnim = null;
+    }
+
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // =====================================================================
+    //  Main loop
+    // =====================================================================
+    let last = performance.now();
+    function frame(now) {
+        const dt = Math.min(0.05, (now - last) / 1000); last = now;
+        if (st.playing) {
+            const prev = st.p;
+            st.p = Math.min(1, st.p + dt / 14);
+            if (prev < BOUND_P && st.p >= BOUND_P) { st.p = BOUND_P; setPlaying(false); }   // pause on the E·S complex for inspection
+            progress.value = Math.round(st.p * 1000);
+            if (st.p >= 1) setPlaying(false);
+        }
+        stepCamera(dt);
+        stepAlpha(dt);
+        bgMols.step(dt);
+        membrane.step(st.t);
+        controls.update();
+        update(dt);
+        renderer.render(scene, camera);
+        requestAnimationFrame(frame);
+    }
+    setModeText('anti');
+    requestAnimationFrame(frame);
+
+    // test hook
+    window.__sim = { bgMols, membrane, protein, st, update, S, enzAtoms, fad, baseArg, clampA, clampB, arrows, allBonds, pOrb, PAXIS, render: () => { controls.update(); update(0); renderer.render(scene, camera); }, goView, camera };
+})();
+</script>
+</body>
+</html>
