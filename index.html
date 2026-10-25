@@ -179,7 +179,7 @@
     <div class="row"><span class="k">Enzyme:</span><span class="v">Succinate dehydrogenase</span></div>
     <div class="row"><span class="k">Substrate:</span><span class="v">Succinate (⁻O₂C–CH₂–CH₂–CO₂⁻)</span></div>
     <div class="row"><span class="k">H⁻ acceptor:</span><span class="v">FAD (N5) → FADH₂</span></div>
-    <div class="row"><span class="k">H⁺ acceptor:</span><span class="v">Active-site base (Arg)</span></div>
+    <div class="row"><span class="k">H⁺ acceptor:</span><span class="v">Arg286</span></div>
     <div class="row"><span class="k">Product:</span><span class="v" id="prod-row" style="color:#4ade80">(<i>E</i>)-Fumarate</span></div>
     <div class="row"><span class="k">O₂C–C2–C3–CO₂ dihedral:</span><span class="v" id="dih-c">180°</span></div>
     <div class="row"><span class="k">H–C2–C3–H (H⁻ / H⁺):</span><span class="v" id="dih-h">180°</span></div>
@@ -498,7 +498,7 @@
     //  Enzyme: active-site residues, FAD, protein surface
     // =====================================================================
     const enzAtoms = [], enzBonds = [];
-    const resOffset = { clampA: V(0, 0, 0), clampB: V(0, 0, 0), base: V(0, 0, 0), fad: V(0, 0, 0) };
+    const resOffset = { clampA: V(0, 0, 0), his354: V(0, 0, 0), thr254: V(0, 0, 0), base: V(0, 0, 0), fad: V(0, 0, 0) };
     function eAtom(el, pos, res, scale) { const a = makeAtom(el, { scale }); a.base = pos.clone(); a.res = res; a.mesh.position.copy(pos); enzAtoms.push(a); return a; }
     function eBond(a, b, o = {}) { const bd = new Bond(a, b, o); enzBonds.push(bd); return bd; }
     const trig = (bondDir, inPlane, sgn) => bondDir.clone().multiplyScalar(-0.5).addScaledVector(inPlane, sgn * 0.866);  // sp2 positions ±120° from bondDir
@@ -540,8 +540,97 @@
         saltBridges.push(new Bond(hb[1], S['O' + k + 'b'], { r: 0.06, order: 0.5, color: 0x22e55e, dashes: 5, shrink: 0.3, onTop: true, zap: true }));
         return { CZ, u, tail, NH1, NH2, hb, n };
     }
-    const clampA = buildClamp(1, 'clampA');
-    const clampB = buildClamp(4, 'clampB');
+    const clampA = buildClamp(1, 'clampA');          // Arg399: bidentate salt bridge to the C1 carboxylate
+
+    // ---- H-bond donors to the C4 carboxylate (E. coli SdhA numbering): His354 (Nε2–H) and Thr254 (Oγ1–H). Each side chain is aimed at its oxygen along the direction
+    //      that keeps it clearest of the substrate (anti and gauche, whole reaction), FAD, the base and the other residues.
+    const donorDefs = [];
+    const avoidPts = (() => {
+        const pts = [];
+        for (const al of [0, -120]) for (const sv of [0, 0.5, 1]) { const g = substrateGeom(sv, al); for (const k in g) pts.push({ p: g[k], k }); }
+        return pts;
+    })();
+    function sideChainAtoms(type, O, d, pv) {
+        // returns [{el, p, role}] for a donor whose H sits 1.84 Å from O along d; pv ⟂ d orients the rest of the side chain
+        const H = O.clone().addScaledVector(d, 1.84), D = H.clone().addScaledVector(d, 1.01), out = [];
+        const tet = (b0, e1) => { const e2 = new THREE.Vector3().crossVectors(b0, e1).normalize(), kk = 2 * Math.SQRT2 / 3;
+            return [0, 1, 2].map(k => { const ph = k * 2 * Math.PI / 3; return b0.clone().multiplyScalar(-1 / 3).addScaledVector(e1, kk * Math.cos(ph)).addScaledVector(e2, kk * Math.sin(ph)); }); };
+        if (type === 'thr') {
+            const e = d.clone().multiplyScalar(0.326).addScaledVector(pv, 0.945).normalize();          // H–O–CB ≈ 109°
+            const CB = D.clone().addScaledVector(e, 1.43);
+            const t = tet(e.clone().negate(), perpPart(d, e).normalize());
+            out.push({ el: 'O', p: D, role: 'donor' }, { el: 'H', p: H, role: 'H' }, { el: 'C', p: CB, role: 'anchor' },
+                     { el: 'C', p: CB.clone().addScaledVector(t[0], 1.52), role: 'side' }, { el: 'C', p: CB.clone().addScaledVector(t[1], 1.53), role: 'tail' });
+        } else {   // histidine: planar imidazole ring containing d, Nε2–H pointing at O
+            const R = 1.36 / (2 * Math.sin(36 * deg)), c = D.clone().addScaledVector(d, R);
+            const v = (k) => c.clone().addScaledVector(d, -R * Math.cos(72 * k * deg)).addScaledVector(pv, R * Math.sin(72 * k * deg));
+            const ring = [['N', v(0), 'donor'], ['C', v(1), 'ring'], ['C', v(2), 'anchor'], ['N', v(3), 'ring'], ['C', v(4), 'ring']];
+            ring.forEach(([el, p, role]) => out.push({ el, p, role }));
+            out.splice(1, 0, { el: 'H', p: H, role: 'H' });
+            const CG = ring[2][1], ex = CG.clone().sub(c).normalize(), CB = CG.clone().addScaledVector(ex, 1.50);
+            out.push({ el: 'C', p: CB, role: 'tail' });
+        }
+        return out;
+    }
+    function placeDonor(type, res, k, oKey, label, sepFrom = [], awayFromKey = null, fixed = null) {
+        const O = G0['O' + k + oKey], Cc = G0['C' + k], out0 = O.clone().sub(Cc).normalize();
+        let best = fixed ? { score: 0, d: fixed.d.clone().normalize(), pv: perpPart(fixed.pv, fixed.d.clone().normalize()).normalize() } : null;
+        if (best) best.atoms = sideChainAtoms(type, O, best.d, best.pv);
+        for (let i = 0; i < (fixed ? 0 : 900); i++) {
+            const z = 2 * ((i * 0.6180339887) % 1) - 1, ph = i * 2.399963, q = Math.sqrt(1 - z * z);
+            const d = V(q * Math.cos(ph), q * Math.sin(ph), z);
+            if (d.dot(out0) < 0.15) continue;                                    // point away from the carboxylate carbon
+            for (let j = 0; j < 4; j++) {
+                const pv = perpPart(V(Math.cos(j * 1.5708), Math.sin(j * 1.5708), 0.37), d).normalize();
+                const atoms = sideChainAtoms(type, O, d, pv);
+                {   // include the backbone stub that chain() will add, so clearance and overlap see the whole residue
+                    const t0 = atoms.find(a => a.role === 'tail').p, ax = t0.clone().sub(O).normalize(); let q = t0.clone();
+                    for (let n = 0; n < 2; n++) { q = q.clone().addScaledVector(ax.clone().multiplyScalar(0.82).addScaledVector(pv, (n % 2 ? -1 : 1) * 0.57).normalize(), n === 0 ? 1.46 : 1.53); atoms.push({ el: 'C', p: q, role: 'stub' }); }
+                }
+                let m = 1e9;
+                for (const a of atoms) {
+                    for (const sp of avoidPts) {
+                        if (sp.k === 'O' + k + oKey && (a.role === 'H' || a.role === 'donor')) continue;   // the H-bond itself
+                        const lim = (a.role === 'H' ? 0 : 0.6) + (sp.k.startsWith('H') ? 1.6 : 2.4);
+                        m = Math.min(m, a.p.distanceTo(sp.p) - lim);
+                    }
+                    for (const e of enzAtoms) m = Math.min(m, a.p.distanceTo(e.base) - (a.el === 'H' && e.el === 'H' ? 2.3 : a.el === 'H' || e.el === 'H' ? 2.4 : 3.0));
+                }
+                const tail = atoms.find(a => a.role === 'tail').p;
+                if (m < 0.0) continue;                                             // must stay clash-free (limits already include vdW margins)
+                // keep residues visually distinct in the FRONT view: reward screen-space separation from the ones listed
+                let overlap = 0;
+                const fd = VIEWS.front.dir;
+                for (const r of sepFrom) for (const e of enzAtoms) { if (e.res !== r) continue;
+                    for (const a of atoms) { const dv = a.p.clone().sub(e.base), q = dv.addScaledVector(fd, -dv.dot(fd)).length(); if (q < 1.6) overlap += (1.6 - q); } }
+                // spread the two C4-carboxylate donors to opposite sides on screen (FRONT view): each leans away from the other O
+                let lean = 0;
+                if (awayFromKey) {
+                    const Oo = G0['O' + k + awayFromKey], w = O.clone().sub(Oo); w.addScaledVector(fd, -w.dot(fd)).normalize();
+                    const c = V(0, 0, 0); atoms.forEach(a => c.add(a.p)); c.multiplyScalar(1 / atoms.length).sub(O); c.addScaledVector(fd, -c.dot(fd));
+                    lean = clamp(c.dot(w), -3, 3);
+                }
+                // don't sit in front of (or behind) the substrate in the FRONT view, and lie across the screen, not along the line of sight
+                for (const k2 in G0) for (const a of atoms) { if (a.role === 'H') continue; const dv = a.p.clone().sub(G0[k2]), q = dv.addScaledVector(fd, -dv.dot(fd)).length(); if (q < 1.4) overlap += 0.7 * (1.4 - q); }
+                const along = Math.abs(d.dot(fd));
+                const score = 0.6 * Math.min(m, 1.2) + 0.05 * tail.length() - 1.5 * overlap + 0.6 * lean - 3.0 * along;   // clearance, reach, no overlap, spread
+                if (!best || score > best.score) best = { score, d, pv, atoms };
+            }
+        }
+        // build it
+        const made = best.atoms.map(a => ({ ...a, atom: eAtom(a.el, a.p, res, a.role === 'tail' ? 1.05 : 1) }));
+        const by = (role) => made.filter(a => a.role === role).map(a => a.atom);
+        const H = by('H')[0], D = by('donor')[0];
+        eBond(D, H);
+        if (type === 'thr') { const [CB] = by('anchor'); eBond(D, CB); by('side').forEach(a => eBond(CB, a)); by('tail').forEach(a => eBond(CB, a)); }
+        else { const ringAt = made.filter(a => a.role === 'donor' || a.role === 'ring' || a.role === 'anchor').map(a => a.atom);
+               for (let r = 0; r < 5; r++) eBond(ringAt[r], ringAt[(r + 1) % 5]); eBond(by('anchor')[0], by('tail')[0]); }
+        const tailAtom = by('tail')[0];
+        const tail = chain(tailAtom.base, tailAtom, tailAtom.base.clone().sub(O).normalize(), best.pv, 2, res);
+        saltBridges.push(new Bond(H, S['O' + k + oKey], { r: 0.06, order: 0.5, color: 0x22e55e, dashes: 5, shrink: 0.3, onTop: true, zap: true }));
+        const def = { res, d: best.d, H, label, anchor: by('anchor')[0], tail, clear: best.score };
+        donorDefs.push(def); return def;
+    }
 
     // ---- Active-site base (Arg, neutral guanidine form) that removes H⁺ from C3
     const baseArg = (() => {
@@ -606,6 +695,11 @@
         return A;
     })();
 
+    // placed after Arg399, the base and FAD exist, so the search can steer clear of all of them
+    // orientations found by a joint search: clash-free, H-bonded, and not overlapping each other or the substrate in the FRONT view
+    const his354 = placeDonor('his', 'his354', 4, 'b', 'His354', [], null, { d: V(-0.3490, -0.8579, -0.3771), pv: V(0.8752, -0.4422, 0.1960) });
+    const thr254 = placeDonor('thr', 'thr254', 4, 'a', 'Thr254', [], null, { d: V(0.2021, -0.7892, -0.5799), pv: V(0.9403, -0.0092, 0.3403) });
+
     // ---- reduced flavin: N5 becomes pyramidal (sp3-like). It rises slightly out of the ring plane toward the substrate and
     //      its new N–H makes ~109° with both ring bonds instead of sticking straight out of the plane.
     const N5_UP = dL2.clone().negate(), N5_RISE = 0.42;
@@ -654,7 +748,7 @@
         const site = [];
         for (const m of ['anti', 'gauche']) { const g = substrateGeom(0, m); for (const k in g) site.push(g[k]); }
         enzAtoms.forEach(a => { site.push(a.base.clone()); });
-        site.push(...clampA.tail.map(a => a.base.clone().addScaledVector(clampA.u, 1.8)), ...clampB.tail.map(a => a.base.clone().addScaledVector(clampB.u, 1.8)));
+        site.push(...clampA.tail.map(a => a.base.clone().addScaledVector(clampA.u, 1.8)), ...donorDefs.flatMap(dd => dd.tail.map(a => a.base.clone().addScaledVector(dd.d, 1.8))));
         const pocket = (p) => { let m = 1e9; for (const q of site) m = Math.min(m, p.distanceTo(q)); return m - 3.1; };
         // smooth funnel: radius widens with distance along the channel axis
         const channel = (p) => { const t = p.dot(OPEN_DIR); if (t < -2) return 1e9; const r = p.clone().addScaledVector(OPEN_DIR, -t).length();
@@ -1111,14 +1205,14 @@
     addLabel('C3', 'small', () => S.C3.mesh.position, atomLabelsOn, 16, -14);
     addLabel('H<sup>−</sup>', 'hl', () => S.H2L.mesh.position, () => st.labels && st.p > 0.4 && st.p < 0.96, -14, 0);
     addLabel('H<sup>+</sup>', 'hl', () => S.H3L.mesh.position, () => st.labels && st.p > 0.4 && st.p < 0.96, 14, 0);
-    addLabel('Arg (CO₂⁻ clamp)', 'res', () => clampA.CZ.mesh.position, () => st.labels && st.resEff > 0.15, 0, -16);
-    addLabel('Arg (CO₂⁻ clamp)', 'res', () => clampB.CZ.mesh.position, () => st.labels && st.resEff > 0.15, 0, 16);
-    addLabel('Arg (base, B:)', 'res base', () => baseArg.CZ.mesh.position, () => st.labels && st.resEff > 0.15, 0, -16);
+    addLabel('Arg399', 'res', () => clampA.CZ.mesh.position, () => st.labels && st.resEff > 0.15, 0, -16);
+    donorDefs.forEach(dd => addLabel(dd.label, 'res', () => dd.anchor.mesh.position, () => st.labels && st.resEff > 0.15, 0, 16));
+    addLabel('Arg286 (base, B:)', 'res base', () => baseArg.CZ.mesh.position, () => st.labels && st.resEff > 0.15, 0, -16);
     addLabel('FAD', 'res fad', () => fad.C10a.mesh.position, () => st.labels && st.resEff > 0.15 && st.p < 0.96, 0, 22);
     addLabel('N5', 'small', () => fad.N5.mesh.position, () => st.labels && st.resEff > 0.15 && st.p < 0.96, -16, 0);
     addLabel('FADH₂', 'res fad', () => fad.C10a.mesh.position, () => st.labels && st.resEff > 0.15 && st.p >= 0.96, 0, 22);
     addLabel('SUCCINATE', 'succ', () => st.subCen || S.C3.mesh.position, () => st.p < 0.26, 0, -34);
-    const lblNoBridge = addLabel('✕ NO SALT BRIDGE', 'bad', () => S.C4.mesh.position, () => st.mode === 'gauche' && st.p > 0.26, 0, -22);
+    const lblNoBridge = addLabel('NO H-BONDING', 'bad', () => S.C4.mesh.position, () => st.mode === 'gauche' && st.p > 0.26, 0, -22);
     const lblProd = addLabel('(<i>E</i>)-FUMARATE', 'prod', () => V(0, 0, 0), () => st.p >= 0.96, 0, 0);
 
     // ---- charges: formal charges circled, partial charges as δ+/δ− (blue = positive, red = negative)
@@ -1140,11 +1234,10 @@
     const side = (L) => { L.side = 26; return L; };
     side(addCharge('formal', -1, () => S.O1b.mesh.position, () => st.charges ? bindFade() : 0));
     side(addCharge('formal', -1, () => S.O4b.mesh.position, () => st.charges ? bindFade() : 0));
-    // arginine clamps: guanidinium +, salt-bridge N–H hydrogens δ+
-    [clampA, clampB].forEach(cl => {
-        side(addCharge('formal', 1, () => cl.CZ.mesh.position, resA));
-        cl.hb.forEach(h => addCharge('partial', 1, () => h.mesh.position, resA, -22, 0));    // δ+ just left of each H
-    });
+    // Arg399: guanidinium +, salt-bridge N–H hydrogens δ+; His354 / Thr254: δ+ on the donating H
+    side(addCharge('formal', 1, () => clampA.CZ.mesh.position, resA));
+    clampA.hb.forEach(h => addCharge('partial', 1, () => h.mesh.position, resA, -22, 0));    // δ+ just left of each H
+    donorDefs.forEach(dd => addCharge('partial', 1, () => dd.H.mesh.position, resA, -22, 0));
     // active-site base: basic N δ− (lone pair) → guanidinium + after it takes the proton
     addCharge('partial', -1, off(baseArg.Nb, () => baseArg.n, 0.55), () => resA() * (1 - smooth(0.35, 0.6, prog())));
     side(addCharge('formal', 1, () => baseArg.CZ.mesh.position, () => resA() * smooth(0.45, 0.75, prog())));
@@ -1164,8 +1257,8 @@
 
     const STEPS = [
         { until: 0.04, title: 'Free substrate', anti: 'Succinate dianion is free in solution. Rotation about C2–C3 is fast, so all conformers interconvert.', gauche: 'Succinate dianion is free in solution. Rotation about C2–C3 is fast, so all conformers interconvert.' },
-        { until: 0.27, title: 'Binding', anti: 'Succinate enters the active site. Arginine side chains close in (induced fit) and grip <b>both</b> carboxylates with salt bridges.', gauche: 'A <b>gauche</b> conformer enters the site. The C1 carboxylate can reach its arginine, but the C4 carboxylate points the wrong way.' },
-        { until: 0.40, title: 'Michaelis complex (E·S)', anti: 'The two clamps hold succinate <b>extended</b> (carboxylates anti, 180°). That fixes the H on C2 facing FAD N5 and the H on C3 facing the base <b>anti-periplanar</b> (H–C–C–H = 180°).', gauche: 'The facing H\'s are still anti-periplanar, but the carboxylates are only 60° apart. The C4 carboxylate has <b>no salt bridge</b>, so SDH does not hold this conformer.' },
+        { until: 0.27, title: 'Binding', anti: 'Succinate enters the active site. Side chains close in (induced fit): <b>Arg399</b> grips the C1 carboxylate with a salt bridge; <b>His354</b> and <b>Thr254</b> H-bond to the C4 carboxylate.', gauche: 'A <b>gauche</b> conformer enters the site. The C1 carboxylate reaches Arg399, but the C4 carboxylate points away from His354 and Thr254.' },
+        { until: 0.40, title: 'Michaelis complex (E·S)', anti: 'Binding at both ends holds succinate <b>extended</b> (carboxylates anti, 180°). That fixes the H on C2 facing FAD N5 and the H on C3 facing the base <b>anti-periplanar</b> (H–C–C–H = 180°).', gauche: 'The facing H\'s are still anti-periplanar, but the carboxylates are only 60° apart. The C4 carboxylate has <b>no H-bonds</b> to His354 / Thr254, so SDH does not hold this conformer.' },
         { until: 0.62, title: 'Elimination begins', anti: 'The base pulls <b>H⁺</b> from C3 while C2 hands <b>H⁻</b> (hydride) to N5 of FAD. Both C–H bonds stretch together (dashed), E2-like.', gauche: 'Hypothetical: the same anti-periplanar H⁺/H⁻ removal, starting from the gauche conformer.' },
         { until: 0.73, title: 'Transition state', anti: 'Both C–H bonds are half broken. The developing p orbitals on C2 and C3 are <b>parallel</b>, which is only possible because the two H\'s were anti-periplanar.', gauche: 'The p orbitals are parallel here too, but the carboxylates are now on the <b>same side</b> of the forming π bond.' },
         { until: 0.96, title: 'π bond forms', anti: 'C2 and C3 rehybridise sp³ → sp². The substituents that stay swing into one plane; the carboxylates, anti in the complex, end up <b>trans</b>. The flavin is now FADH⁻ (− on N1).', gauche: 'C2 and C3 become sp². Because the carboxylates started gauche, they end up <b>cis</b>.' },
@@ -1194,7 +1287,7 @@
         const fit = smooth(0.13, 0.29, p);
         st.resEff = st.res * smooth(0.13, 0.25, p);
         resOffset.clampA.copy(clampA.u).multiplyScalar(3.0 * (1 - fit));
-        resOffset.clampB.copy(clampB.u).multiplyScalar(3.0 * (1 - fit));
+        donorDefs.forEach(dd => resOffset[dd.res].copy(dd.d).multiplyScalar(3.0 * (1 - fit)));
         resOffset.base.copy(dL3).multiplyScalar(3.5 * (1 - fit));
         resOffset.fad.copy(dL2).multiplyScalar(2.5 * (1 - fit));
         for (const a of enzAtoms) { a.mesh.position.copy(a.base).add(resOffset[a.res]); setAtomAlpha(a, st.resEff); }
@@ -1220,7 +1313,7 @@
         bondHN5.vis = 1; bondHNb.vis = 1;
         saltBridges.forEach(b => {
             const d = b.a.mesh.position.distanceTo(b.b.mesh.position);
-            b.vis = (st.charges ? 1 : 0) * st.resEff * smooth(0.22, 0.29, p) * (1 - smooth(3.3, 3.8, d));
+            b.vis = (st.charges ? 1 : 0) * st.resEff * smooth(0.22, 0.29, p) * (1 - smooth(2.5, 2.9, d));
         });
         allBonds.forEach(b => b.update());
 
@@ -1314,7 +1407,7 @@
         const step = STEPS.find(x => p < x.until);
         stepTitle.textContent = step.title + (mode === 'gauche' && p > 0.04 ? ' — hypothetical' : '');
         stepText.innerHTML = step[mode] + (Math.abs(p - BOUND_P) < 0.004 && !st.playing
-            ? '<div style="margin-top:.45rem;color:#4ade80;font-weight:700">Paused on the bound complex. Rotate and zoom to inspect the salt bridges and charges, then press ▶ to continue.</div>' : '');
+            ? '<div style="margin-top:.45rem;color:#4ade80;font-weight:700">Paused on the bound complex. Rotate and zoom to inspect the salt bridge, H-bonds and charges, then press ▶ to continue.</div>' : '');
         stepBox.classList.toggle('warn', mode === 'gauche' && p > 0.04);
         document.querySelectorAll('#ticks span').forEach((el, i) => {
             const at = [0, 0.34, 0.675, 1][i]; el.classList.toggle('on', Math.abs(p - at) < 0.06);
@@ -1485,7 +1578,7 @@
     requestAnimationFrame(frame);
 
     // test hook
-    window.__sim = { bgMols, membrane, protein, st, update, S, enzAtoms, fad, baseArg, clampA, clampB, arrows, allBonds, pOrb, PAXIS, render: () => { controls.update(); update(0); renderer.render(scene, camera); }, goView, camera };
+    window.__sim = { sideChainAtoms, G0, avoidPts, donorDefs, his354, thr254, bgMols, membrane, protein, st, update, S, enzAtoms, fad, baseArg, clampA, clampB: his354, arrows, allBonds, pOrb, PAXIS, render: () => { controls.update(); update(0); renderer.render(scene, camera); }, goView, camera };
 })();
 </script>
 </body>
