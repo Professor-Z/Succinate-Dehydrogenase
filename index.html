@@ -22,6 +22,8 @@
     .drawer.left { left: 16px; }
     .drawer.right { right: 16px; }
     .drawer.left.collapsed { transform: translateX(calc(-100% + 18px)); }     /* only the 34px tab stays on screen */
+    .drawer.top { top: 0; left: 50%; transform: translateX(-50%); flex-direction: column; align-items: center; z-index: 11; }
+    .drawer.top.collapsed { transform: translate(-50%, calc(-100% + 34px)); }
     .drawer.right.collapsed { transform: translateX(calc(100% - 18px)); }
     /* tabs styled like the E2 simulation's CONTROLS (green) and ZOOM (blue) tabs */
     .drawer-tab { width: 34px; padding: 18px 0; margin-top: 12px; cursor: pointer; font: inherit; font-size: 13px; font-weight: 800;
@@ -31,12 +33,21 @@
     .drawer.left .drawer-tab { border-radius: 12px 0 0 12px;                                             /* (rotated 180°) */
         background: #2f80ff; color: #ffffff; box-shadow: 0 0 14px rgba(47,128,255,0.75), 0 0 30px rgba(47,128,255,0.35); }
     .drawer.right .drawer-tab { border-radius: 0 12px 12px 0;
+        background: #a855f7; color: #ffffff; box-shadow: 0 0 14px rgba(168,85,247,0.75), 0 0 30px rgba(168,85,247,0.35); }
+    .drawer.top .drawer-tab { writing-mode: horizontal-tb; transform: none; width: auto; height: 34px; padding: 0 26px; margin: 0; border-radius: 0 0 12px 12px;
         background: #22e55e; color: #04290f; box-shadow: 0 0 14px rgba(34,229,94,0.75), 0 0 30px rgba(34,229,94,0.35); }
-    #rxn-box { margin: 0.1rem 0 0.7rem; padding: 0.45rem 0.5rem 0.35rem; border-radius: 0.5rem; background: rgba(15,23,42,0.7); border-left: 3px solid #2f80ff; }
-    .rxn-head { font-size: 0.66rem; font-weight: 800; letter-spacing: 0.14em; color: #60a5fa; margin-bottom: 0.1rem; }
-    #rxn-svg { display: block; width: 100%; height: auto; }
-    .rxn-note { font-size: 0.66rem; color: #94a3b8; margin-top: 0.1rem; }
-    #info { width: 23rem; padding: 1rem 1.1rem; max-height: calc(100vh - 150px); overflow: auto; }
+    .drawer.top #controls { margin-top: 12px; }
+    #info { width: 28rem; padding: 0.9rem 1.1rem 0.8rem; max-height: calc(100vh - 32px); overflow: auto; }
+    #mech-svg { display: flex; justify-content: center; margin: 0.35rem -0.3rem 0.4rem; padding: 0.2rem 0; border-radius: 0.4rem; background: rgba(2,6,23,0.55); }
+    #bg { width: 27rem; padding: 1rem 1.15rem 1.1rem; max-height: calc(100vh - 150px); overflow: auto; }
+    #bg h1 { margin: 0 0 0.1rem; font-size: 1.125rem; line-height: 1.25; font-weight: 700; color: #c084fc; }
+    #bg .sub { font-size: 0.75rem; font-weight: 600; color: #9ca3af; margin-bottom: 0.4rem; }
+    #bg h3 { margin: 0.85rem 0 0.25rem; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: #c084fc; }
+    #bg p { margin: 0 0 0.5rem; font-size: 0.8rem; line-height: 1.5; color: #e5e7eb; }
+    #bg b { color: #fff; }
+    #bg .eq { margin: 0.2rem 0 0.5rem; padding: 0.45rem 0.55rem; border-radius: 0.45rem; background: rgba(15,23,42,0.7); border-left: 3px solid #a855f7;
+        font-size: 0.78rem; font-weight: 600; color: #f1f5f9; line-height: 1.4; }
+    #bg .note { margin-top: 0.7rem; padding-top: 0.5rem; border-top: 1px solid #374151; font-size: 0.7rem; color: #94a3b8; line-height: 1.4; }
     #info h1 { margin: 0 0 0.1rem; font-size: 1.125rem; line-height: 1.25; font-weight: 700; color: #60a5fa; }
     #info .sub { font-size: 0.75rem; font-weight: 600; color: #9ca3af; margin-bottom: 0.6rem; }
     .row { display: flex; justify-content: space-between; gap: 0.75rem; font-size: 0.8rem; padding: 0.22rem 0; border-bottom: 1px solid #374151; }
@@ -52,7 +63,9 @@
     .hint b { color: #4ade80; font-weight: 700; }
 
     /* ---------- controls (top right) ---------- */
-    #controls { width: 17rem; padding: 0.9rem 1rem; max-height: calc(100vh - 150px); overflow: auto; }
+    #controls { width: min(54rem, calc(100vw - 24px)); padding: 0.85rem 1rem 0.3rem; max-height: calc(100vh - 150px); overflow: auto;
+        display: flex; flex-wrap: wrap; gap: 0 1.1rem; }
+    .ctl-col { flex: 1 1 11rem; min-width: 10rem; }
     .mini-hint { font-size: 0.68rem; color: #94a3b8; line-height: 1.35; margin: -0.35rem 0 0.8rem; }
     .sec { font-size: 0.66rem; font-weight: 800; letter-spacing: 0.14em; color: #94a3b8; margin: 0.15rem 0 0.4rem; }
     .sec + .btn-row, .btn-row + .sec { margin-top: 0; }
@@ -159,8 +172,9 @@
     #reactive-label.gauche { color: #fb923c; text-shadow: 0 0 6px rgba(251,146,60,0.95), 0 0 16px rgba(251,146,60,0.7), 0 0 30px rgba(251,146,60,0.45); }
 
     @media (max-width: 900px) {
-        #info { width: min(23rem, calc(100vw - 70px)); max-height: 60vh; }
-        #controls { width: 15rem; max-height: 60vh; }
+        #info { width: min(28rem, calc(100vw - 70px)); max-height: calc(100vh - 32px); }
+        #bg { width: min(27rem, calc(100vw - 70px)); max-height: 60vh; }
+        #controls { max-height: 60vh; }
     }
 </style>
 </head>
@@ -169,124 +183,83 @@
 <div id="labels"></div>
 <div id="reactive-label">REACTIVE CONFORMATION</div>
 
-<!-- ======================= INFO PANEL ======================= -->
+<!-- ======================= REACTION MECHANISM (left) ======================= -->
 <div id="info-drawer" class="drawer left collapsed">
 <div id="info" class="glass-panel interactive">
-    <h1>Succinate Dehydrogenase</h1>
+    <h1>Reaction Mechanism</h1>
     <div class="sub" id="info-sub">Enzymatic <i>anti</i>-elimination: succinate → fumarate (Complex II, FAD-dependent)</div>
-    <div id="rxn-box"><div class="rxn-head">REACTION</div>
-<svg id="rxn-svg" viewBox="0 0 316 104" xmlns="http://www.w3.org/2000/svg" font-family="Inter, system-ui, sans-serif">
-<line x1="24.0" y1="52.0" x2="43.1" y2="41.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
-<line x1="43.1" y1="41.0" x2="62.1" y2="52.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
-<line x1="62.1" y1="52.0" x2="81.2" y2="41.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
-<line x1="24.0" y1="52.0" x2="10.1" y2="44.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/><line x1="23.2" y1="47.4" x2="11.9" y2="40.9" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
-<line x1="24.0" y1="52.0" x2="24.0" y2="68.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
-<line x1="81.2" y1="41.0" x2="81.2" y2="25.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/><line x1="77.6" y1="38.0" x2="77.6" y2="25.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
-<line x1="81.2" y1="41.0" x2="95.0" y2="49.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
-<text x="4.9" y="45.2" fill="#f87171" font-size="12" font-weight="700" text-anchor="middle">O</text>
-<text x="81.2" y="23.2" fill="#f87171" font-size="12" font-weight="700" text-anchor="middle">O</text>
-<text x="25.0" y="78.2" fill="#f87171" font-size="12" font-weight="700" text-anchor="middle">O<tspan dy="-5" font-size="9">−</tspan></text>
-<text x="103.2" y="56.2" fill="#f87171" font-size="12" font-weight="700" text-anchor="middle">O<tspan dy="-5" font-size="9">−</tspan></text>
-<polygon points="43.1,41.0 40.5,28.0 45.7,28.0" fill="#facc15"/>
-<line x1="60.9" y1="54.2" x2="63.3" y2="54.2" stroke="#facc15" stroke-width="1.2"/>
-<line x1="60.6" y1="56.3" x2="63.6" y2="56.3" stroke="#facc15" stroke-width="1.2"/>
-<line x1="60.2" y1="58.5" x2="64.0" y2="58.5" stroke="#facc15" stroke-width="1.2"/>
-<line x1="59.8" y1="60.7" x2="64.4" y2="60.7" stroke="#facc15" stroke-width="1.2"/>
-<line x1="59.5" y1="62.8" x2="64.7" y2="62.8" stroke="#facc15" stroke-width="1.2"/>
-<text x="43.1" y="27.2" fill="#facc15" font-size="11" font-weight="700" text-anchor="middle">H</text>
-<text x="62.1" y="75.2" fill="#facc15" font-size="11" font-weight="700" text-anchor="middle">H</text>
-<line x1="122" y1="42" x2="179" y2="42" stroke="#e5e7eb" stroke-width="1.8"/><polygon points="186,42 177,38 177,46" fill="#e5e7eb"/><text x="154" y="35" fill="#60a5fa" font-size="10.5" font-weight="800" text-anchor="middle">SDH</text><text x="154" y="56" fill="#fde68a" font-size="9.5" font-weight="700" text-anchor="middle">FAD → FADH<tspan dy="2.5" font-size="7">2</tspan></text>
-<line x1="224.0" y1="52.0" x2="243.1" y2="41.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
-<line x1="245.7" y1="42.5" x2="259.5" y2="50.5" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/><line x1="243.9" y1="45.6" x2="257.7" y2="53.6" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
-<line x1="262.1" y1="52.0" x2="281.2" y2="41.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
-<line x1="224.0" y1="52.0" x2="210.1" y2="44.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/><line x1="223.2" y1="47.4" x2="211.9" y2="40.9" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
-<line x1="224.0" y1="52.0" x2="224.0" y2="68.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
-<line x1="281.2" y1="41.0" x2="281.2" y2="25.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/><line x1="277.6" y1="38.0" x2="277.6" y2="25.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
-<line x1="281.2" y1="41.0" x2="295.0" y2="49.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
-<text x="204.9" y="45.2" fill="#f87171" font-size="12" font-weight="700" text-anchor="middle">O</text>
-<text x="281.2" y="23.2" fill="#f87171" font-size="12" font-weight="700" text-anchor="middle">O</text>
-<text x="225.0" y="78.2" fill="#f87171" font-size="12" font-weight="700" text-anchor="middle">O<tspan dy="-5" font-size="9">−</tspan></text>
-<text x="303.2" y="56.2" fill="#f87171" font-size="12" font-weight="700" text-anchor="middle">O<tspan dy="-5" font-size="9">−</tspan></text>
-<text x="52.6" y="98" fill="#9ca3af" font-size="10" font-weight="600" text-anchor="middle">succinate</text><text x="252.6" y="98" fill="#9ca3af" font-size="10" font-weight="600" text-anchor="middle">(<tspan font-style="italic">E</tspan>)-fumarate</text>
-</svg>
-<svg id="rxn-svg-npa" style="display:none" viewBox="0 0 316 104" xmlns="http://www.w3.org/2000/svg" font-family="Inter, system-ui, sans-serif">
-<line x1="29.9" y1="48.6" x2="43.1" y2="41.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
-<line x1="43.1" y1="41.0" x2="62.1" y2="52.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
-<line x1="62.1" y1="52.0" x2="81.2" y2="41.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
-<line x1="18.1" y1="48.6" x2="10.1" y2="44.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/><line x1="17.3" y1="44.0" x2="11.9" y2="40.9" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
-<line x1="24.0" y1="58.8" x2="24.0" y2="68.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
-<line x1="81.2" y1="41.0" x2="81.2" y2="25.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/><line x1="77.6" y1="38.0" x2="77.6" y2="25.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
-<line x1="81.2" y1="41.0" x2="95.0" y2="49.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
-<text x="4.9" y="45.2" fill="#f87171" font-size="12" font-weight="700" text-anchor="middle">O</text>
-<text x="81.2" y="23.2" fill="#f87171" font-size="12" font-weight="700" text-anchor="middle">O</text>
-<text x="25.0" y="78.2" fill="#f87171" font-size="12" font-weight="700" text-anchor="middle">O<tspan dy="-5" font-size="9">−</tspan></text>
-<text x="103.2" y="56.2" fill="#f87171" font-size="12" font-weight="700" text-anchor="middle">O<tspan dy="-5" font-size="9">−</tspan></text>
-<polygon points="43.1,41.0 40.5,28.0 45.7,28.0" fill="#facc15"/>
-<line x1="60.9" y1="54.2" x2="63.3" y2="54.2" stroke="#facc15" stroke-width="1.2"/>
-<line x1="60.6" y1="56.3" x2="63.6" y2="56.3" stroke="#facc15" stroke-width="1.2"/>
-<line x1="60.2" y1="58.5" x2="64.0" y2="58.5" stroke="#facc15" stroke-width="1.2"/>
-<line x1="59.8" y1="60.7" x2="64.4" y2="60.7" stroke="#facc15" stroke-width="1.2"/>
-<line x1="59.5" y1="62.8" x2="64.7" y2="62.8" stroke="#facc15" stroke-width="1.2"/>
-<text x="43.1" y="27.2" fill="#facc15" font-size="11" font-weight="700" text-anchor="middle">H</text>
-<text x="62.1" y="75.2" fill="#facc15" font-size="11" font-weight="700" text-anchor="middle">H</text>
-<line x1="122.0" y1="42.0" x2="179.0" y2="42.0" stroke="#e5e7eb" stroke-width="1.8"/><polygon points="186,42 177,38 177,46" fill="#e5e7eb"/><text x="154" y="35" fill="#60a5fa" font-size="10.5" font-weight="800" text-anchor="middle">SDH</text><text x="154" y="56" fill="#fde68a" font-size="9.5" font-weight="700" text-anchor="middle">FAD → FADH<tspan dy="2.5" font-size="7">2</tspan></text>
-<line x1="229.9" y1="48.6" x2="243.1" y2="41.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
-<line x1="245.7" y1="42.5" x2="259.5" y2="50.5" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/><line x1="243.9" y1="45.6" x2="257.7" y2="53.6" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
-<line x1="262.1" y1="52.0" x2="281.2" y2="41.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
-<line x1="218.1" y1="48.6" x2="210.1" y2="44.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/><line x1="217.3" y1="44.0" x2="211.9" y2="40.9" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
-<line x1="224.0" y1="58.8" x2="224.0" y2="68.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
-<line x1="281.2" y1="41.0" x2="281.2" y2="25.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/><line x1="277.6" y1="38.0" x2="277.6" y2="25.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
-<line x1="281.2" y1="41.0" x2="295.0" y2="49.0" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/>
-<text x="204.9" y="45.2" fill="#f87171" font-size="12" font-weight="700" text-anchor="middle">O</text>
-<text x="281.2" y="23.2" fill="#f87171" font-size="12" font-weight="700" text-anchor="middle">O</text>
-<text x="225.0" y="78.2" fill="#f87171" font-size="12" font-weight="700" text-anchor="middle">O<tspan dy="-5" font-size="9">−</tspan></text>
-<text x="303.2" y="56.2" fill="#f87171" font-size="12" font-weight="700" text-anchor="middle">O<tspan dy="-5" font-size="9">−</tspan></text>
-<text x="52.6" y="98" fill="#9ca3af" font-size="10" font-weight="600" text-anchor="middle">3-nitropropionate</text><text x="252.6" y="98" fill="#9ca3af" font-size="10" font-weight="600" text-anchor="middle">(<tspan font-style="italic">E</tspan>)-3-nitroacrylate</text>
-<text x="24.0" y="56.2" fill="#60a5fa" font-size="12" font-weight="700" text-anchor="middle">N<tspan dy="-5" font-size="9">+</tspan></text>
-<text x="224.0" y="56.2" fill="#60a5fa" font-size="12" font-weight="700" text-anchor="middle">N<tspan dy="-5" font-size="9">+</tspan></text>
-</svg>
-    <div class="rxn-note" id="rxn-note">Yellow H's: the anti-periplanar pair removed (H⁻ to FAD, H⁺ to the base)</div></div>
-    <div class="row"><span class="k">Enzyme:</span><span class="v">Succinate dehydrogenase</span></div>
-    <div class="row"><span class="k">Substrate:</span><span class="v" id="sub-row">Succinate (⁻O₂C–CH₂–CH₂–CO₂⁻)</span></div>
-    <div class="row"><span class="k">H⁻ acceptor:</span><span class="v">FAD (N5) → FADH₂</span></div>
-    <div class="row"><span class="k">H⁺ acceptor:</span><span class="v" id="hplus-row">Arg286</span></div>
-    <div class="row"><span class="k">Product:</span><span class="v" id="prod-row" style="color:#4ade80">(<i>E</i>)-Fumarate</span></div>
-    <div class="row"><span class="k" id="dih-c-k">O₂C–C2–C3–CO₂ dihedral:</span><span class="v" id="dih-c">180°</span></div>
-    <div class="row"><span class="k">H–C2–C3–H (H⁻ / H⁺):</span><span class="v" id="dih-h">180°</span></div>
-    <div id="step-box"><div id="step-title">Step</div><div id="step-text"></div></div>
-    <div class="hint"><b>Drag</b> to rotate the view · <b>scroll</b> to zoom · <b>space</b> to play/pause</div>
+    <div id="step-box"><div id="step-title">Step</div>
+        <div id="mech-svg"></div>
+        <div id="step-text"></div></div>
+    <div class="hint">Red curved arrows: electron-pair movement. Yellow H's: the hydrogens transferred. Wedge = toward you, hash = away.</div>
 </div>
-<button class="drawer-tab" data-drawer="info-drawer">REACTION INFO</button>
+<button class="drawer-tab" data-drawer="info-drawer">REACTION MECHANISM</button>
 </div>
 
-<!-- ======================= CONTROLS ======================= -->
-<div id="controls-drawer" class="drawer right collapsed">
-<button class="drawer-tab" data-drawer="controls-drawer">CONTROLS</button>
+<!-- ======================= BACKGROUND INFO (right) ======================= -->
+<div id="bg-drawer" class="drawer right collapsed">
+<button class="drawer-tab" data-drawer="bg-drawer">BACKGROUND INFO</button>
+<div id="bg" class="glass-panel interactive">
+    <h1>Succinate Dehydrogenase</h1>
+    <div class="sub">An enzyme-catalyzed anti elimination, seen through organic chemistry</div>
+
+    <h3>The enzyme and where it works</h3>
+    <p>An <b>enzyme</b> is a protein that catalyzes a reaction by binding its starting material (the <b>substrate</b>) in a pocket called the <b>active site</b>, where amino-acid side chains are positioned to stabilize the transition state. <b>Succinate dehydrogenase (SDH)</b> is the enzyme in this simulation. It sits in the inner membrane of the <b>mitochondrion</b>, the organelle that makes most of a cell's ATP (adenosine triphosphate, the cell's energy currency).</p>
+    <p>SDH is the only enzyme that belongs to two central pathways at once. It is a step of the <b>citric acid cycle</b> (also called the tricarboxylic acid, TCA, or Krebs cycle), which oxidizes fuel molecules to CO₂. It is also <b>Complex II</b> of the <b>electron transport chain (ETC)</b>, the series of membrane proteins that passes electrons to O₂ and uses the energy to drive ATP synthesis.</p>
+
+    <h3>The reaction: a dehydrogenation</h3>
+    <div class="eq">⁻O₂C–CH₂–CH₂–CO₂⁻ &nbsp;+&nbsp; FAD &nbsp;→&nbsp; <i>(E)</i>-⁻O₂C–CH=CH–CO₂⁻ &nbsp;+&nbsp; FADH₂</div>
+    <p>At cellular pH (about 7.4) both carboxylic acids are deprotonated, so the substrate is the <b>succinate</b> dianion (butanedioate) and the product is <b>fumarate</b>, (<i>E</i>)-butenedioate. Two hydrogens are removed from the adjacent CH₂ groups (C2 and C3) to make a C=C bond. That is an <b>oxidation</b>: the carbon skeleton loses two electrons and two protons.</p>
+    <p>You can read it as an <b>E2 elimination</b> in which the "leaving group" is a <b>hydride ion (H⁻)</b>. A base removes H⁺ from one carbon, the C–H electrons become the new π bond, and the other carbon's H departs with its bonding pair as H⁻. Hydride is a terrible leaving group on its own, so it needs a strong hydride acceptor waiting to receive it, much as the quinone DDQ (2,3-dichloro-5,6-dicyano-1,4-benzoquinone) takes hydride when it dehydrogenates organic compounds in the lab.</p>
+
+    <h3>FAD: the hydride acceptor</h3>
+    <p><b>FAD (flavin adenine dinucleotide)</b> is a <b>coenzyme</b>: a small organic molecule bound to the enzyme that does chemistry the amino acids cannot. Its reactive part is a fused tricyclic heterocycle, the <b>isoalloxazine</b> ring (the flavin); the rest (R) is a ribityl chain linked through phosphates to adenosine. In SDH the flavin is also covalently attached to the protein through a histidine.</p>
+    <p>The flavin's N5=C4a and C10a=N1 bonds form a conjugated, electron-poor system. Hydride adds at <b>N5</b>, and the electron pair is pushed through the ring onto <b>N1</b>, giving the reduced anion FADH⁻. Protonation at N1 then gives <b>FADH₂</b> (1,5-dihydroflavin): two electrons and two protons gained in all.</p>
+    <p>Why FAD rather than NAD⁺ (nicotinamide adenine dinucleotide), the hydride acceptor used to oxidize alcohols to carbonyls? Removing H₂ from an unactivated CH₂–CH₂ unit is a weak driving force. NAD⁺ is too poor an oxidant for it (standard reduction potential about −0.32 V at pH 7), while protein-bound FAD sits near 0 V, close to the fumarate/succinate couple (about +0.03 V), so the transfer is thermodynamically feasible.</p>
+
+    <h3>Where the electrons go next</h3>
+    <p>FADH₂ does not leave the enzyme. It is reoxidized in place by passing its electrons, one at a time, through a chain of <b>iron–sulfur (Fe–S) clusters</b> inside SDH to <b>ubiquinone</b> (coenzyme Q, abbreviated Q), a lipid-soluble quinone in the membrane. The reduced form, ubiquinol (QH₂), carries the electrons on to Complex III of the ETC. The regenerated FAD is ready for the next succinate.</p>
+
+    <h3>Stereochemistry: why only fumarate</h3>
+    <p>Succinate can rotate freely about C2–C3, but the active site grips both carboxylates: <b>Arg399</b> forms a salt bridge (ion pair plus H-bonds) to one, and <b>His354</b> and <b>Thr254</b> H-bond to the other. Only the extended, <b>anti</b> conformer fits. In that conformer the C2–H pointing at FAD's N5 and the C3–H pointing at the base, <b>Arg286</b>, are <b>anti-periplanar</b>, the same geometry an E2 reaction prefers because it lets the two breaking C–H orbitals become parallel p orbitals in the new π bond. The carboxylates, anti in the bound substrate, end up <b>trans</b>: (<i>E</i>)-fumarate. The <i>Z</i> isomer, maleate, is never formed. Isotope-labeling experiments confirmed the anti (trans) removal of hydrogens.</p>
+    <p>Two details differ from a lab E2. The base is an arginine, whose side chain (a guanidine) is normally protonated in water (pKₐ about 12–13); the enzyme's environment holds it in the neutral, basic form. And whether the two H's leave in one concerted step or the C–H proton leaves first (a carbanion, E1cB-like pathway) is still debated; the simulation shows the concerted picture.</p>
+
+    <h3>Inhibitors</h3>
+    <p><b>Malonate</b> (⁻O₂C–CH₂–CO₂⁻) resembles succinate and binds the same site but cannot be oxidized: a classic <b>competitive</b>, reversible inhibitor. <b>3-Nitropropionate</b> (3-NPA, the anion of 3-nitropropionic acid), a natural toxin, also mimics succinate, but SDH oxidizes it to a nitroalkene that traps the enzyme covalently. That <b>irreversible, mechanism-based</b> inhibition is shown after the main reaction.</p>
+
+    <div class="note">Residue numbers follow the <i>E. coli</i> enzyme (subunit SdhA). The mitochondrial enzymes of other species use slightly different numbers for the same residues.</div>
+</div>
+</div>
+
+<!-- ======================= CONTROLS (top) ======================= -->
+<div id="controls-drawer" class="drawer top collapsed">
 <div id="controls" class="glass-panel interactive">
-    <div class="sec">C2–C3 CONFORMATION</div>
+    <div class="ctl-col"><div class="sec">C2–C3 CONFORMATION</div>
     <div class="btn-row two">
         <button class="btn conf" id="mode-anti" title="The conformer SDH binds: carboxylates anti (180°)">ANTI<span class="conf-sub"><br><span style="font-weight:600;opacity:.8">→ FUMARATE</span></span></button>
         <button class="btn conf" id="mode-gauche" title="Hypothetical: carboxylates gauche (60°)">GAUCHE<span class="conf-sub"><br><span style="font-weight:600;opacity:.8">→ MALEATE</span></span></button>
     </div>
     <div class="mini-hint">Or drag the C3 end (its CO₂⁻ or either H) to turn it about the C2–C3 bond.</div>
-    <div class="sec">VIEW</div>
+    </div><div class="ctl-col"><div class="sec">VIEW</div>
     <div class="btn-row two">
         <button class="btn" id="view-front">FRONT</button>
         <button class="btn" id="view-newman">NEWMAN</button>
     </div>
-    <div class="sec">SHOW</div>
+    </div><div class="ctl-col"><div class="sec">SHOW</div>
     <div class="btn-row two">
         <button class="btn tg" id="tg-labels">RESIDUES</button>
         <button class="btn tg active" id="tg-charges" title="Formal charges (circled) and partial charges (δ+ / δ−)">CHARGES</button>
         <button class="btn tg active" id="tg-arrows">ARROWS</button>
         <button class="btn orb" id="tg-orbitals">P ORBITALS</button>
     </div>
-    <div class="sec">ENZYME</div>
+    </div><div class="ctl-col"><div class="sec">ENZYME</div>
     <div class="slider-row" style="margin-bottom:0">
         <div class="lbl"><span>Enzyme opacity</span><span id="enz-val">100%</span></div>
         <input type="range" class="enz" id="enz-slider" min="0" max="100" value="100">
     </div>
+    </div>
 </div>
+<button class="drawer-tab" data-drawer="controls-drawer">CONTROLS</button>
 </div>
 
 <!-- ======================= REACTION PROGRESS ======================= -->
@@ -334,6 +307,293 @@
     </div>
 </div>
 
+<script>
+// =====================================================================
+//  2D mechanism drawings (SVG) for the REACTION MECHANISM panel
+// =====================================================================
+window.MECH = (() => {
+    const D = Math.PI / 180, L = 22, R = 20;
+    const pol = (p, a, l = L) => [p[0] + l * Math.cos(a * D), p[1] - l * Math.sin(a * D)];
+    const mid = (p, q, t = 0.5) => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
+    const f = (n) => (+n).toFixed(1);
+    const COL = { N: '#60a5fa', O: '#f87171', H: '#e5e7eb', HL: '#facc15', g: '#e5e7eb', bond: '#d1d5db', arrow: '#ff3b3b', hb: '#22e55e', res: '#c7d2fe', base: '#fdba74', fad: '#fde68a' };
+
+    function scene(o) {
+        const at = {}, bonds = [], arrows = [], marks = [];
+        const A = (id, p, t = null, opt = {}) => (at[id] = Object.assign({ p, t, c: t ? (COL[t[0]] || COL.g) : null }, opt));
+        const B = (a, b, type = 's', opt = {}) => bonds.push(Object.assign({ a, b, type }, opt));
+        const lp = (id, ang, opt = {}) => marks.push(Object.assign({ k: 'lp', id, ang }, opt));
+        const fc = (p, sign) => marks.push({ k: 'fc', p, sign });
+        const tx = (p, s, opt = {}) => marks.push(Object.assign({ k: 'tx', p, s }, opt));
+        const arr = (from, to, bend, opt = {}) => arrows.push(Object.assign({ from, to, bend }, opt));
+        const hl = o.hl ? COL.HL : COL.H;
+
+        // ---------------- FAD (isoalloxazine ring) ----------------
+        const Bc = [70, 120], Ac = [70, 120 - R * Math.sqrt(3)], Cc = [70, 120 + R * Math.sqrt(3)];
+        const hx = (c, a) => pol(c, a, R);
+        const F = { N5: hx(Bc, 0), C5a: hx(Bc, 60), C9a: hx(Bc, 120), N10: hx(Bc, 180), C10a: hx(Bc, 240), C4a: hx(Bc, 300),
+                    C6: hx(Ac, 0), C7: hx(Ac, 60), C8: hx(Ac, 120), C9: hx(Ac, 180), C4: hx(Cc, 0), N1: hx(Cc, 180), C2: hx(Cc, 240), N3: hx(Cc, 300) };
+        if (o.fad && o.fad !== 'none') {
+            const dim = o.fadDim ? 0.45 : 1;
+            const Fa = (id, p, t) => A('f' + id, p, t, { op: dim });
+            for (const k in F) Fa(k, F[k], /^N/.test(k) ? 'N' : null);
+            Fa('O4', pol(F.C4, 0), 'O'); Fa('O2', pol(F.C2, 240), 'O'); Fa('HN3', pol(F.N3, 300, 19), 'H');
+            Fa('M7', pol(F.C7, 60)); Fa('M8', pol(F.C8, 120)); Fa('R', pol(F.N10, 180), 'R'); at.fR.c = '#cbd5e1';
+            const Fb = (a, b, t = 's', opt = {}) => B('f' + a, 'f' + b, t, Object.assign({ op: dim }, opt));
+            // ring A (aromatic)
+            Fb('C5a', 'C6', 'd', { in: Ac }); Fb('C6', 'C7'); Fb('C7', 'C8', 'd', { in: Ac }); Fb('C8', 'C9'); Fb('C9', 'C9a', 'd', { in: Ac }); Fb('C9a', 'C5a');
+            // ring B
+            Fb('N5', 'C5a'); Fb('C9a', 'N10'); Fb('N10', 'C10a');
+            // ring C
+            Fb('C4a', 'C4'); Fb('C4', 'N3'); Fb('N3', 'C2'); Fb('C2', 'N1');
+            Fb('C4', 'O4', 'd'); Fb('C2', 'O2', 'd'); Fb('N3', 'HN3'); Fb('C7', 'M7'); Fb('C8', 'M8'); Fb('N10', 'R');
+            const red = o.fad === 'red' || o.fad === 'redH';
+            if (o.fad === 'ts') {
+                Fb('C4a', 'N5', 'pd', { in: Bc }); Fb('C10a', 'C4a', 'pd', { in: Bc }); Fb('N1', 'C10a', 'pd', { in: Cc });
+                marks.push({ k: 'delta', p: pol(F.N1, 200, 15), s: 'δ−' });
+            } else if (red) {
+                Fb('C4a', 'N5'); Fb('C10a', 'C4a', 'd', { in: Bc }); Fb('N1', 'C10a');
+            } else {
+                Fb('C4a', 'N5', 'd', { in: Bc }); Fb('C10a', 'C4a'); Fb('N1', 'C10a', 'd', { in: Cc });
+            }
+            if (red) { A('fH5', pol(F.N5, 0, 19), 'H', { c: hl, op: dim }); Fb('N5', 'H5'); }
+            if (o.fad === 'red') {
+                fc(pol(F.N1, 145, 14), -1); lp('fN1', 215, { op: dim });
+            }
+            if (o.fad === 'redH') { A('fH1', pol(F.N1, 180, 19), 'H', { c: o.hlN1 ? COL.HL : COL.H, op: dim }); Fb('N1', 'H1'); }
+            if (o.acid) {           // H–A: generic acid (water / acidic side chain) protonates N1
+                const H = pol(F.N1, 240, 34), Ap = pol(H, 240, 22);
+                A('aH', H, 'H', { c: COL.HL }); A('aA', Ap, 'A', { c: '#cbd5e1' }); B('aH', 'aA');
+                arr(pol(F.N1, 222, 10), pol(H, 75, 7), -9);
+                arr(mid(H, Ap), pol(Ap, 150, 9), 9);
+            }
+            const lbl = { ox: 'FAD', ts: 'FAD', red: 'FADH⁻', redH: 'FADH₂' }[o.fad];
+            tx([70, 214], lbl, { c: COL.fad, w: 800, size: 11, op: dim });
+            tx([70, 226], 'R = ribityl–ADP', { c: '#94a3b8', size: 8, op: dim });
+        }
+
+        // ---------------- substrate ----------------
+        // Zig-zag convention: H2L–C2–C3–H3L lie in the page (anti-periplanar, 180° apart in projection);
+        // the other two groups on each sp³ carbon are a wedge/hash pair. Every sp² centre is drawn at 120°.
+        const C2 = [182, 120], C3 = pol(C2, 270);
+        const npa = o.sub === 'npa', st = o.st || 'R', gauche = o.conf === 'gauche';
+        if (st !== 'none') {
+            A('C2', C2); A('C3', C3);
+            const sp3 = st === 'R' || st === 'TS';
+            // ---- C2 ----
+            let g2, g2type;
+            if (sp3) { g2 = 45; g2type = 'w'; }
+            else { g2 = 30; g2type = 's'; }
+            if (npa) {
+                const N = pol(C2, g2), Oa = pol(N, g2 + 60), Ob = pol(N, g2 - 60);   // trigonal nitro N
+                A('nN', N, 'N'); A('nOa', Oa, 'O'); A('nOb', Ob, 'O');
+                B('C2', 'nN', st === 'I' ? 'd' : g2type, st === 'I' ? { side: -1 } : {});
+                B('nN', 'nOa', st === 'I' ? 's' : 'd'); B('nN', 'nOb');
+                fc(pol(N, g2 + 180 + 60, 12), 1); fc(pol(Ob, g2 - 60, 12), -1);
+                if (st === 'I') fc(pol(Oa, 165, 12), -1);
+            } else {
+                A('G2', pol(C2, g2), 'CO₂⁻', { grp: 'start' }); B('C2', 'G2', g2type);
+            }
+            if (sp3) {
+                A('H2', pol(C2, 345, 19), 'H'); B('C2', 'H2', 'h');
+                A('H2L', pol(C2, 150), 'H', { c: hl }); B('C2', 'H2L', st === 'TS' ? 'dash' : 's');
+            } else if (st === 'A') {                      // C2 sp³ again: gained the proton from Arg286
+                A('H2', pol(C2, 190, 19), 'H'); B('C2', 'H2', 'h');
+                A('H3Lc', pol(C2, 110, 19), 'H', { c: COL.HL }); B('C2', 'H3Lc', 'w');
+            } else { A('H2', pol(C2, 150), 'H'); B('C2', 'H2'); }
+            // ---- C3 ----
+            let g3, h3, g3t, h3t;
+            if (sp3) {           // anti conformer is centrosymmetric: C3's wedge/hash are C2's, inverted
+                if (gauche) { g3 = 165; g3t = 'w'; h3 = 225; h3t = 'h'; }
+                else        { g3 = 225; g3t = 'h'; h3 = 165; h3t = 'w'; }
+            } else if (st === 'P') { g3 = gauche ? 330 : 210; h3 = gauche ? 210 : 330; g3t = h3t = 's'; }
+            else { g3 = 170; g3t = 'h'; h3 = st === 'I' ? 232 : 250; h3t = 'w'; }       // I / A: C3 bonded to Arg286 N (in the page, 330°)
+            const right = Math.cos(g3 * D) > 0;
+            A('G3', pol(C3, g3), right ? 'CO₂⁻' : '⁻O₂C', { grp: right ? 'start' : 'end' }); B('C3', 'G3', g3t);
+            A('H3', pol(C3, h3, h3t === 's' ? 22 : 19), 'H'); B('C3', 'H3', h3t);
+            if (sp3) { A('H3L', pol(C3, 330), 'H', { c: hl }); B('C3', 'H3L', st === 'TS' ? 'dash' : 's'); }
+            // ---- C2–C3 ----
+            if (st === 'TS') B('C2', 'C3', 'pd', { side: 1 });
+            else if (st === 'P') B('C2', 'C3', 'd', { side: 1 });
+            else B('C2', 'C3');
+            if (st === 'TS') {
+                B('H2L', 'fN5', 'dash'); B('H3L', 'Nb', 'dash');
+                tx([306, 66], '‡', { c: '#e5e7eb', size: 20, w: 700 });
+                marks.push({ k: 'brk', x0: 8, x1: 298, y0: 46, y1: 232 });
+            }
+        }
+
+        // ---------------- Arg286 (catalytic base) ----------------
+        if (o.arg && o.arg !== 'none') {
+            const kind = o.arg;
+            const resForm = kind === 'mich' || kind === 'inter' || kind === 'adduct';     // guanidinium drawn with C=N⁺H₂
+            let Nb, CZ;
+            if (!resForm) {
+                // neutral guanidine: sp² imine N. C=N (300°), N–H (60°) and the lone pair (180°, facing C3–H) are 120° apart
+                Nb = [250, 142]; A('Nb', Nb, 'N');
+                A('hNb', pol(Nb, 60, 19), 'H'); B('Nb', 'hNb');
+                CZ = pol(Nb, 300); A('CZ', CZ); B('Nb', 'CZ', 'd', { side: 1 });
+                A('NH2', pol(CZ, 0), 'NH₂', { grp: 'start', c: COL.N }); B('CZ', 'NH2');
+                A('NHR', pol(CZ, 240), 'NH', { grp: 'top', c: COL.N }); B('CZ', 'NHR');
+                if (kind === 'base') lp('Nb', 180);
+                if (kind === 'ts') marks.push({ k: 'delta', p: pol(Nb, 120, 14), s: 'δ+' });
+                if (kind === 'prot') { A('H3Lb', pol(Nb, 180, 19), 'H', { c: hl }); B('Nb', 'H3Lb'); fc(pol(Nb, 120, 13), 1); }
+            } else {
+                // the attacking N, drawn sp³: N–CZ (270°), N–H (30°), and the C3 bond / lone pair at 150°; 4th group on a wedge (90°)
+                Nb = kind === 'mich' ? pol(C3, 330, 46) : pol(C3, 330); A('Nb', Nb, 'N');
+                if (kind === 'adduct') { A('hNb', pol(Nb, 30, 19), 'H'); B('Nb', 'hNb'); }
+                else if (kind === 'mich') { A('hNb', pol(Nb, 90, 19), 'H'); B('Nb', 'hNb', 'h'); }
+                else { A('hNb', pol(Nb, 210, 19), 'H'); B('Nb', 'hNb', 'h'); }
+                CZ = pol(Nb, 270); A('CZ', CZ); B('Nb', 'CZ');
+                A('NH2', pol(CZ, 330), 'NH₂', { grp: 'start', c: COL.N }); B('CZ', 'NH2', 'd', { side: 1 });
+                fc([at.NH2.p[0] + 31, at.NH2.p[1] - 7], 1);
+                A('NHR', pol(CZ, 210), 'NH', { grp: 'top', c: COL.N }); B('CZ', 'NHR');
+                if (kind === 'mich')  { A('H3Lb', pol(Nb, 30, 20), 'H', { c: COL.HL }); B('Nb', 'H3Lb'); lp('Nb', 150); }
+                if (kind === 'inter') { A('H3Lb', pol(Nb, 30, 20), 'H', { c: COL.HL }); B('Nb', 'H3Lb'); B('C3', 'Nb', 's', { c: '#ff6b6b' }); fc(pol(Nb, 330, 14), 1); }
+                if (kind === 'adduct') { B('C3', 'Nb', 's', { c: '#ff6b6b', wid: 2.4 }); lp('Nb', 90); }
+            }
+            const lab = at.NHR.p;
+            tx([lab[0], lab[1] + 22], 'Arg286', { c: COL.base, w: 800, size: 10 });
+        }
+
+        // ---------------- binding interactions ----------------
+        if (o.bind) {
+            if (npa) { marks.push({ k: 'hbl', a: pol(at.nOa.p, 30, 6), b: [236, 70] }, { k: 'hbl', a: pol(at.nOb.p, 45, 6), b: [240, 76] }); tx([262, 72], 'Arg399⁺', { c: COL.res, w: 700, size: 9.5 }); }
+            else { marks.push({ k: 'hbl', a: [226, 99], b: [244, 84] }); tx([266, 80], 'Arg399⁺', { c: COL.res, w: 700, size: 9.5 }); }
+            if (o.bind === 'anti') {
+                marks.push({ k: 'hbl', a: [150, 166], b: [142, 188] });
+                tx([142, 200], 'His354 · Thr254', { c: COL.res, w: 700, size: 9.5 });
+            } else {
+                tx([150, 204], '✕ no H-bonds', { c: '#ff2b2b', w: 800, size: 9.5 });
+                tx([150, 216], 'His354 · Thr254 out of reach', { c: '#fca5a5', size: 8 });
+            }
+        }
+        if (o.note) tx(o.note.p, o.note.s, { c: o.note.c || '#facc15', w: 700, size: 9.5 });
+
+        // ---------------- curved arrows ----------------
+        const g = (id) => at[id].p;
+        for (const a of o.arrows || []) {
+            if (a === 'base') arr(pol(g('Nb'), 180, 10), pol(g('H3L'), 15, 7), -10);
+            if (a === 'pi') arr(mid(g('C3'), g('H3L'), 0.5), [g('C2')[0] + 4, (g('C2')[1] + g('C3')[1]) / 2], -9);
+            if (a === 'hyd') arr(mid(g('C2'), g('H2L'), 0.5), pol(g('fN5'), 20, 6.5), 14);     // ends on N5 itself
+            if (a === 'fad') {
+                arr(mid(F.N5, F.C4a, 0.45), mid(F.C4a, F.C10a, 0.5), -7);
+                arr(mid(F.C10a, F.N1, 0.5), pol(F.N1, 120, 9), -7);
+            }
+            if (a === 'mich') {
+                arr(pol(g('Nb'), 150, 10), pol(g('C3'), 330, 7), 8);
+                arr([g('C2')[0] + 4, (g('C2')[1] + g('C3')[1]) / 2], mid(g('C2'), g('nN'), 0.5), -10);
+                arr(mid(g('nN'), g('nOa'), 0.5), pol(g('nOa'), 0, 9), -8);
+            }
+            if (a === 'pt') {
+                arr(pol(mid(g('C2'), g('nN'), 0.5), 300, 3), pol(g('H3Lb'), 95, 7), -12);
+                arr(pol(mid(g('Nb'), g('H3Lb'), 0.5), 120, 2), pol(g('Nb'), 95, 9), 7);
+                arr(pol(g('nOa'), 40, 8), pol(mid(g('nN'), g('nOa'), 0.5), 0, 4), -12);
+            }
+        }
+        return { at, bonds, arrows, marks };
+    }
+
+    // ---------------- renderer ----------------
+    function trimOf(a) {
+        if (!a.t) return 0;
+        if (a.grp) return a.grp === 'top' ? 7 : 2.5;
+        return a.t === 'H' ? 5.5 : 6.5;
+    }
+    function render(sc, vb) {
+        const out = [];
+        const { at, bonds, arrows, marks } = sc;
+        const line = (p, q, c = COL.bond, w = 1.5, extra = '') => out.push(`<line x1="${f(p[0])}" y1="${f(p[1])}" x2="${f(q[0])}" y2="${f(q[1])}" stroke="${c}" stroke-width="${w}" stroke-linecap="round"${extra}/>`);
+        for (const b of bonds) {
+            const A = at[b.a], Bt = at[b.b]; if (!A || !Bt) continue;
+            const p = A.p, q = Bt.p, dx = q[0] - p[0], dy = q[1] - p[1], l = Math.hypot(dx, dy), ux = dx / l, uy = dy / l;
+            const ta = trimOf(A), tb = trimOf(Bt);
+            const P = [p[0] + ux * ta, p[1] + uy * ta], Q = [q[0] - ux * tb, q[1] - uy * tb];
+            const op = Math.min(A.op ?? 1, Bt.op ?? 1, b.op ?? 1), opA = op < 1 ? ` opacity="${op}"` : '';
+            const c = b.c || COL.bond, w = b.wid || 1.5;
+            let nx = -uy, ny = ux;                       // offset direction for a second line
+            if (b.in) { const m = mid(p, q); if ((b.in[0] - m[0]) * nx + (b.in[1] - m[1]) * ny < 0) { nx = -nx; ny = -ny; } }
+            if (b.side) { nx *= b.side; ny *= b.side; }
+            const off = (P2, Q2, d, sh) => [[P2[0] + nx * d + ux * sh, P2[1] + ny * d + uy * sh], [Q2[0] + nx * d - ux * sh, Q2[1] + ny * d - uy * sh]];
+            if (b.type === 's') line(P, Q, c, w, opA);
+            else if (b.type === 'dash') line(P, Q, '#9ca3af', 1.4, ` stroke-dasharray="2.6 2.6"${opA}`);
+            else if (b.type === 'd') {
+                if (b.in || b.side) { line(P, Q, c, w, opA); const [a2, b2] = off(P, Q, 3.6, l * 0.13); line(a2, b2, c, w, opA); }
+                else { const [a1, b1] = off(P, Q, 1.9, 0), [a2, b2] = off(P, Q, -1.9, 0); line(a1, b1, c, w, opA); line(a2, b2, c, w, opA); }
+            } else if (b.type === 'pd') {
+                line(P, Q, c, w, opA); const [a2, b2] = off(P, Q, 3.6, l * 0.13); line(a2, b2, '#9ca3af', 1.3, ` stroke-dasharray="2.4 2.4"${opA}`);
+            } else if (b.type === 'w') {
+                const W = 3.2; out.push(`<polygon points="${f(P[0])},${f(P[1])} ${f(Q[0] - uy * W)},${f(Q[1] + ux * W)} ${f(Q[0] + uy * W)},${f(Q[1] - ux * W)}" fill="${c}"${opA}/>`);
+            } else if (b.type === 'h') {
+                for (let i = 1; i <= 5; i++) { const t = i / 5.5, wv = 0.6 + 2.8 * t, m = mid(P, Q, t);
+                    line([m[0] - uy * wv, m[1] + ux * wv], [m[0] + uy * wv, m[1] - ux * wv], c, 1.1, opA); }
+            }
+        }
+        for (const m of marks) if (m.k === 'hbl') line(m.a, m.b, COL.hb, 1.3, ' stroke-dasharray="2.2 2.4"');
+        for (const id in at) {
+            const a = at[id]; if (!a.t) continue;
+            const op = a.op != null && a.op < 1 ? ` opacity="${a.op}"` : '';
+            if (a.grp === 'start' || a.grp === 'end') {
+                const x = a.p[0] + (a.grp === 'start' ? 1.5 : -1.5);
+                out.push(`<text x="${f(x)}" y="${f(a.p[1] + 4)}" fill="${a.c}" font-size="11" font-weight="700" text-anchor="${a.grp}"${op}>${a.t}</text>`);
+            } else if (a.grp === 'top') {
+                out.push(`<text x="${f(a.p[0])}" y="${f(a.p[1] + 8)}" fill="${a.c}" font-size="11" font-weight="700" text-anchor="middle"${op}>${a.t}</text>`);
+            } else {
+                out.push(`<text x="${f(a.p[0])}" y="${f(a.p[1] + 4)}" fill="${a.c}" font-size="${a.t === 'H' ? 10.5 : 12}" font-weight="700" text-anchor="middle"${op}>${a.t}</text>`);
+            }
+        }
+        for (const m of marks) {
+            if (m.k === 'lp') { const a = at[m.id]; const c = pol(a.p, m.ang, 9), tx = Math.cos((m.ang + 90) * D) * 2.3, ty = -Math.sin((m.ang + 90) * D) * 2.3;
+                const op = m.op != null && m.op < 1 ? ` opacity="${m.op}"` : '';
+                out.push(`<circle cx="${f(c[0] + tx)}" cy="${f(c[1] + ty)}" r="1.3" fill="#e5e7eb"${op}/><circle cx="${f(c[0] - tx)}" cy="${f(c[1] - ty)}" r="1.3" fill="#e5e7eb"${op}/>`); }
+            if (m.k === 'fc') { const c = m.sign > 0 ? '#60a5fa' : '#f87171', [x, y] = m.p;
+                out.push(`<circle cx="${f(x)}" cy="${f(y)}" r="4.6" fill="none" stroke="${c}" stroke-width="1.1"/><line x1="${f(x - 2.4)}" y1="${f(y)}" x2="${f(x + 2.4)}" y2="${f(y)}" stroke="${c}" stroke-width="1.2"/>` +
+                    (m.sign > 0 ? `<line x1="${f(x)}" y1="${f(y - 2.4)}" x2="${f(x)}" y2="${f(y + 2.4)}" stroke="${c}" stroke-width="1.2"/>` : '')); }
+            if (m.k === 'delta') out.push(`<text x="${f(m.p[0])}" y="${f(m.p[1] + 3)}" fill="${m.s.includes('+') ? '#60a5fa' : '#f87171'}" font-size="9.5" font-style="italic" font-weight="800" text-anchor="middle">${m.s}</text>`);
+            if (m.k === 'tx') out.push(`<text x="${f(m.p[0])}" y="${f(m.p[1])}" fill="${m.c || '#e5e7eb'}" font-size="${m.size || 10}" font-weight="${m.w || 600}" text-anchor="${m.anchor || 'middle'}"${m.op != null && m.op < 1 ? ` opacity="${m.op}"` : ''}>${m.s}</text>`);
+            if (m.k === 'brk') { const { x0, x1, y0, y1 } = m, t = 5;
+                out.push(`<path d="M${x0 + t},${y0} H${x0} V${y1} H${x0 + t} M${x1 - t},${y0} H${x1} V${y1} H${x1 - t}" fill="none" stroke="#9ca3af" stroke-width="1.2"/>`); }
+        }
+        for (const a of arrows) {
+            const [p0, p3] = [a.from, a.to], dx = p3[0] - p0[0], dy = p3[1] - p0[1], l = Math.hypot(dx, dy), nx = dy / l, ny = -dx / l;
+            const c1 = [p0[0] + dx / 3 + nx * a.bend * 1.33, p0[1] + dy / 3 + ny * a.bend * 1.33], c2 = [p0[0] + 2 * dx / 3 + nx * a.bend * 1.33, p0[1] + 2 * dy / 3 + ny * a.bend * 1.33];
+            const tx = p3[0] - c2[0], ty = p3[1] - c2[1], tl = Math.hypot(tx, ty), ux = tx / tl, uy = ty / tl, H = 5.2, W = 2.9;
+            const base = [p3[0] - ux * H, p3[1] - uy * H];
+            out.push(`<path d="M${f(p0[0])},${f(p0[1])} C${f(c1[0])},${f(c1[1])} ${f(c2[0])},${f(c2[1])} ${f(base[0])},${f(base[1])}" fill="none" stroke="${COL.arrow}" stroke-width="1.5" stroke-linecap="round"/>`);
+            out.push(`<polygon points="${f(p3[0])},${f(p3[1])} ${f(base[0] - uy * W)},${f(base[1] + ux * W)} ${f(base[0] + uy * W)},${f(base[1] - ux * W)}" fill="${COL.arrow}"/>`);
+        }
+        return `<svg viewBox="${vb || '0 40 322 196'}" xmlns="http://www.w3.org/2000/svg" font-family="Inter, system-ui, sans-serif" style="display:block;width:100%;height:auto">${out.join('')}</svg>`;
+    }
+
+    // ---------------- scenes for each step ----------------
+    function svg(key, mode) {
+        const sub = key.startsWith('npa') ? 'npa' : 'succ', conf = mode === 'gauche' ? 'gauche' : 'anti';
+        const k = key.replace(/^npa-/, '');
+        const base = { sub, conf };
+        const S = (o) => render(scene(Object.assign({}, base, o)));
+        switch (k) {
+            case 'free':   return S({ st: 'R', fad: 'none', arg: 'none' });
+            case 'bind':   return S({ st: 'R', fad: 'ox', arg: 'base', bind: conf });
+            case 'es':     return S({ st: 'R', fad: 'ox', arg: 'base', bind: conf, hl: true, arrows: ['base', 'pi', 'hyd', 'fad'] });
+            case 'arrows': return S({ st: 'R', fad: 'ox', arg: 'base', hl: true, arrows: ['base', 'pi', 'hyd', 'fad'] });
+            case 'ts':     return S({ st: 'TS', fad: 'ts', arg: 'ts', hl: true });
+            case 'p1':     return S({ st: 'P', fad: 'red', arg: 'prot', hl: true });
+            case 'n1':     return S({ st: 'P', fad: 'red', arg: 'prot', hl: true, acid: true });
+            case 'prod':   return S({ st: 'P', fad: 'redH', arg: 'prot', hl: true, hlN1: true });
+            case 'mich':   return S({ st: 'P', fad: 'redH', fadDim: true, arg: 'mich', arrows: ['mich'] });
+            case 'inter':  return S({ st: 'I', fad: 'redH', fadDim: true, arg: 'inter', arrows: ['pt'] });
+            case 'adduct': return S({ st: 'A', fad: 'redH', fadDim: true, arg: 'adduct' });
+            case 'depart': return render(scene({ sub, st: 'none', fad: 'ox', arg: 'base' }), '0 40 322 196').replace('</svg>',
+                `<text x="215" y="66" fill="#e5e7eb" font-size="10" font-weight="700" text-anchor="middle">FADH₂ → FAD + 2 H⁺ + 2 e⁻</text>` +
+                `<text x="215" y="82" fill="#94a3b8" font-size="9" text-anchor="middle">e⁻ → Fe–S clusters → ubiquinone (Q)</text>` +
+                `<text x="215" y="98" fill="#94a3b8" font-size="9" text-anchor="middle">Arg286–H⁺ → Arg286 + H⁺</text></svg>`);
+        }
+        return '';
+    }
+    return { svg, scene, render };
+})();
+
+</script>
 <script>
 (() => {
     // =====================================================================
@@ -818,6 +1078,10 @@
     const bondHN5 = new Bond(S.H2L, fad.N5, { order: 0, dashes: 5, e2dash: true });
     const bondHNb = new Bond(S.H3L, baseArg.Nb, { order: 0, dashes: 5, e2dash: true });
     const bondAdduct = new Bond(baseArg.Nb, S.C3, { order: 0, dashes: 5, e2dash: true });   // 3-NP mode: Arg286 → C3 (β to the nitro group)
+    // nitronate C2=N π bond (intermediate of the aza-Michael addition) and the C2–H bond made when Arg286's proton moves to C2
+    const bondNitronate = new Bond(S.C2, S.C1, { r: 0.075, order: 0, dashes: 5, e2dash: true,
+        offsetFn: () => { const c2 = S.C2.mesh.position; return perpPart(S.C3.mesh.position.clone().sub(c2), S.C1.mesh.position.clone().sub(c2)).normalize().multiplyScalar(0.2); } });
+    const bondC2H3L = new Bond(S.C2, S.H3L, { order: 0, dashes: 5, e2dash: true });
     const adductHaze = [0, 0.25, 0.5, 0.75, 1].map(() => { const g = makeGlow(0xff2b2b, 1.4); g.renderOrder = 62; return g; });   // soft radiant haze along the bond
 
     // ---- protein: van der Waals spheres filling an irregular, multi-lobed body, with a smooth funnel-shaped
@@ -1309,14 +1573,15 @@
     addLabel('Arg399', 'res', () => clampA.CZ.mesh.position, () => st.labels && st.resEff > 0.15, 0, -16);
     donorDefs.forEach(dd => addLabel(dd.label, 'res', () => dd.anchor.mesh.position, () => st.labels && st.resEff > 0.15, 0, 16));
     addLabel('Arg286 (base, B:)', 'res base', () => baseArg.CZ.mesh.position, () => st.labels && st.resEff > 0.15, 0, -16);
-    addLabel('FAD', 'res fad', () => fad.C10a.mesh.position, () => st.labels && st.resEff > 0.15 && st.p < 0.96, 0, 22);
-    addLabel('N5', 'small', () => fad.N5.mesh.position, () => st.labels && st.resEff > 0.15 && st.p < 0.96, -16, 0);
-    addLabel('FADH₂', 'res fad', () => fad.C10a.mesh.position, () => st.labels && st.resEff > 0.15 && st.p >= 0.96, 0, 22);
+    addLabel('FAD', 'res fad', () => fad.C10a.mesh.position, () => st.labels && st.resEff > 0.15 && st.p < 0.97, 0, 22);
+    addLabel('N5', 'small', () => fad.N5.mesh.position, () => st.labels && st.resEff > 0.15 && st.p < 0.97, -16, 0);
+    addLabel('FADH₂', 'res fad', () => fad.C10a.mesh.position, () => st.labels && st.resEff > 0.15 && st.p >= 0.97, 0, 22);
+    addLabel('H<sup>+</sup>', 'hl', () => fad.HN1.mesh.position, () => st.p > 0.865 && st.p < 0.955 && inh.phase !== 'depart', 14, -10);
     const lblSucc = addLabel('SUCCINATE', 'succ', () => st.subCen || S.C3.mesh.position, () => st.p < 0.26 && inh.phase !== 'depart', 0, -34);
     const lblNoBridge = addLabel('NO H-BONDING', 'bad', () => S.C4.mesh.position, () => st.mode === 'gauche' && st.p > 0.26, 0, -22);
-    const lblProd = addLabel('(<i>E</i>)-FUMARATE', 'prod', () => V(0, 0, 0), () => st.p >= 0.96 && inh.phase !== 'depart' && inh.add < 0.5, 0, 0);
+    const lblProd = addLabel('(<i>E</i>)-FUMARATE', 'prod', () => V(0, 0, 0), () => st.p >= 0.975 && inh.phase !== 'depart' && inh.add < 0.15, 0, 0);
     const lblAdduct = addLabel('<svg width="54" height="18" viewBox="0 0 54 18" style="flex:none"><line x1="52" y1="9" x2="11" y2="9" stroke="#ff2b2b" stroke-width="3.2" stroke-linecap="round"/><polygon points="0,9 13,2 13,16" fill="#ff2b2b"/></svg><span>IRREVERSIBLY INHIBITED</span>',
-        'bad adduct', () => baseArg.Nb.mesh.position.clone().add(S.C3.mesh.position).multiplyScalar(0.5), () => st.inhib && inh.add > 0.6, 0, 0);
+        'bad adduct', () => baseArg.Nb.mesh.position.clone().add(S.C3.mesh.position).multiplyScalar(0.5), () => st.inhib && inh.add > 0.92, 0, 0);
 
     // ---- charges: formal charges circled, partial charges as δ+/δ− (blue = positive, red = negative)
     const prog = () => { const s = smooth(0.40, 0.95, st.p); return smooth(0.12, 0.88, s); };   // fraction of H transferred
@@ -1330,23 +1595,28 @@
     }
     const off = (atom, vfn, d) => () => atom.mesh.position.clone().addScaledVector(vfn(), d);
     const away = (atom, from) => () => atom.mesh.position.clone().sub(from.mesh.position).normalize();
-    const bindFade = () => smooth(0.26, 0.33, st.p);                 // charge labels fade in once the substrate has bound
+    const inhMode = () => st.inhib || inh.phase === 'depart';
+    const bindFade = () => inhMode() ? 1 : smooth(0.26, 0.33, st.p);  // charge labels fade in once the substrate has bound (and then stay)
+    const departK = () => inh.phase === 'depart' ? smooth(0.45, 0.9, smooth(0, 1, inh.t / 3.2)) : 0;   // Arg286 gives its H⁺ back
+    const advWin = () => st.inhib ? smooth(0.2, 0.32, inh.add) * (1 - smooth(0.68, 0.8, inh.add)) : 0;   // aza-Michael intermediate
     const resA = () => st.charges ? clamp(st.resEff * 1.4, 0, 1) * bindFade() : 0;
     // substrate carboxylates (formal −1 each, kept in the product)
     // formal charges sit beside their atom on screen, on the side away from the substrate's centre (set when drawing labels)
     const side = (L) => { L.side = 26; return L; };
-    side(addCharge('formal', -1, () => S.O1b.mesh.position, () => st.charges ? bindFade() : 0));
-    side(addCharge('formal', -1, () => S.O4b.mesh.position, () => st.charges ? bindFade() : 0));
-    addCharge('formal', 1, () => S.C1.mesh.position, () => (st.charges && st.inhib) ? bindFade() : 0, 26, 0);   // nitro N⁺ (3-NPA): always just right of the N
+    side(addCharge('formal', -1, () => S.O1b.mesh.position, () => st.charges ? bindFade() * S.O1b.alpha : 0));
+    side(addCharge('formal', -1, () => S.O4b.mesh.position, () => st.charges ? bindFade() * S.O4b.alpha : 0));
+    addCharge('formal', 1, () => S.C1.mesh.position, () => (st.charges && st.inhib) ? bindFade() : 0, 26, 0);
+    side(addCharge('formal', -1, () => S.O1a.mesh.position, () => st.charges ? advWin() : 0));          // nitronate O⁻   // nitro N⁺ (3-NPA): always just right of the N
     // Arg399: guanidinium +, salt-bridge N–H hydrogens δ+; His354 / Thr254: δ+ on the donating H
     side(addCharge('formal', 1, () => clampA.CZ.mesh.position, resA));
     clampA.hb.forEach(h => addCharge('partial', 1, () => h.mesh.position, resA, -22, 0));    // δ+ just left of each H
     donorDefs.forEach(dd => addCharge('partial', 1, () => dd.H.mesh.position, resA, -22, 0));
     // active-site base: basic N δ− (lone pair) → guanidinium + after it takes the proton
-    addCharge('partial', -1, off(baseArg.Nb, () => baseArg.n, 0.55), () => resA() * (1 - smooth(0.35, 0.6, prog())));
-    side(addCharge('formal', 1, () => baseArg.CZ.mesh.position, () => resA() * smooth(0.45, 0.75, prog())));
+    addCharge('partial', -1, off(baseArg.Nb, () => baseArg.n, 0.55), () => resA() * (1 - smooth(0.35, 0.6, prog()) * (1 - departK())) * (st.inhib && inh.add > 0 ? 0 : 1));
+    side(addCharge('formal', 1, () => baseArg.CZ.mesh.position, () => resA() * smooth(0.45, 0.75, prog()) * (1 - departK())));
+    addCharge('formal', 1, () => baseArg.Nb.mesh.position, () => resA() * advWin(), 0, 26);                // sp³ N⁺ of the adduct intermediate
     // flavin: carbonyl O's δ−; N1 carries the − charge of FADH⁻ until it is protonated (→ FADH₂)
-    side(addCharge('formal', -1, () => fad.N1.mesh.position, () => resA() * smooth(0.55, 0.8, prog()) * (1 - smooth(0.95, 0.99, st.p))));
+    side(addCharge('formal', -1, () => fad.N1.mesh.position, () => resA() * smooth(0.55, 0.8, prog()) * (1 - smooth(0.92, 0.97, st.p))));
 
     const reactiveEl = document.getElementById('reactive-label');
 
@@ -1357,24 +1627,52 @@
     const q0 = new THREE.Quaternion().setFromAxisAngle(V(0.35, 1, 0.25).normalize(), 2.3);
     const T0 = OPEN_DIR.clone().multiplyScalar(22);
     const stepTitle = document.getElementById('step-title'), stepText = document.getElementById('step-text'), stepBox = document.getElementById('step-box');
-    const dihC = document.getElementById('dih-c'), dihH = document.getElementById('dih-h');
+    const mechEl = document.getElementById('mech-svg'); let lastMech = null;
+    const infoEl = document.getElementById('info');
+    function fitMech() {
+        const svg = mechEl.querySelector('svg'); if (!svg) return;
+        svg.style.width = '100%'; svg.style.height = 'auto';
+        // keep the panel clear of the bottom (progress) bar when they share horizontal space
+        const bp = document.getElementById('bottom-panel').getBoundingClientRect(), L = 16, T = 16;   // panel's resting (open) position
+        const bottom = bp.left < L + infoEl.offsetWidth ? bp.top - 10 : window.innerHeight - 16;
+        infoEl.style.maxHeight = Math.max(200, bottom - T) + 'px';
+        const over = infoEl.scrollHeight - infoEl.clientHeight;
+        if (over > 0) {
+            const r = svg.getBoundingClientRect(), nh = Math.max(120, r.height - over - 2);
+            svg.style.height = nh + 'px'; svg.style.width = (r.width * nh / r.height) + 'px';
+        }
+    }
+    window.addEventListener('resize', fitMech);
+    document.querySelector('[data-drawer="info-drawer"]').addEventListener('click', () => fitMech());
 
     const inh = { phase: null, t: 0, add: 0, wait: 0, dismissed: false, addPlaying: false };   // 3-NP inhibition sequence
     const STEPS_INH = [
-        { until: 0.04, title: '3-NPA approaches', text: '3-Nitropropionic acid (3-NPA; here the anion, ⁻O₂C–CH₂–CH₂–NO₂) diffuses in. Its nitro group (blue N) has the same shape and charge pattern as a carboxylate.' },
-        { until: 0.27, title: 'Competitive binding', text: '3-NPA fits the succinate pocket: <b>Arg399</b> grips the nitro oxygens and <b>His354</b>/<b>Thr254</b> H-bond the carboxylate. It now <b>competes</b> with succinate for the same site.' },
-        { until: 0.40, title: 'E·I complex (reversible so far)', text: 'Bound exactly like succinate, with the two H\'s anti-periplanar to FAD N5 and Arg286. At this point binding is still reversible: excess succinate could displace it. Press <b>PROCEED WITH IRREVERSIBLE INHIBITION</b>.' },
-        { until: 0.96, title: 'SDH oxidizes the inhibitor', text: 'The enzyme treats 3-NPA as a substrate: H⁻ goes to FAD and H⁺ to Arg286, forming <b>3-nitroacrylate</b>. With its C=C conjugated to the nitro group, it is a strong Michael acceptor, still sitting next to Arg286.' },
-        { until: 2.00, title: 'Covalent trapping', text: '' }
+        { until: 0.04, key: 'free', title: '3-NPA approaches', text: '3-Nitropropionate (3-NPA, ⁻O₂C–CH₂–CH₂–NO₂) diffuses in. Its nitro group (N⁺ bonded to O and O⁻) has the same trigonal shape and charge pattern as a carboxylate.' },
+        { until: 0.27, key: 'bind', title: 'Competitive binding', text: '3-NPA fits the succinate pocket: <b>Arg399</b> grips the nitro oxygens and <b>His354</b>/<b>Thr254</b> H-bond the carboxylate. It now <b>competes</b> with succinate for the same site.' },
+        { until: 0.40, key: 'es', title: 'E·I complex (still reversible)', text: 'Bound exactly like succinate: the C2–H and C3–H are anti-periplanar, aimed at FAD N5 and Arg286. So far binding is reversible; excess succinate could displace it. The arrows show the oxidation that follows, exactly as for succinate.' },
+        { until: 0.62, key: 'arrows', title: 'SDH oxidizes the inhibitor', text: 'The enzyme treats 3-NPA as a substrate, with the same arrows as for succinate: Arg286 takes H⁺ from C3, the C3–H electrons become the C2=C3 π bond, and C2–H leaves as H⁻ to N5 of FAD, pushing electrons through the flavin onto N1.' },
+        { until: 0.73, key: 'ts', title: 'Transition state', text: 'Both C–H bonds are half broken and the C2=C3 π bond is half formed. Negative charge builds on the flavin (δ− at N1), positive charge on Arg286 (δ+).' },
+        { until: 0.86, key: 'p1', title: '3-Nitroacrylate forms', text: '<b>(E)-3-Nitroacrylate</b>. Its C=C is conjugated to the strongly electron-withdrawing nitro group, so C3 (β to NO₂) is very electrophilic: a <b>Michael acceptor</b>, sitting right next to Arg286. FAD is now FADH⁻; Arg286 holds the C3 proton.' },
+        { until: 0.975, key: 'n1', title: 'FADH⁻ is protonated', text: 'As in normal turnover, N1 of FADH⁻ takes a proton from a nearby donor (H–A: water or an acidic group), giving <b>FADH₂</b>.' },
+        { until: 2.00, key: 'mich', title: 'Covalent trapping', text: '' }
     ];
+    // the covalent step (3-nitroacrylate → Arg286 adduct), chosen by inh.add
+    const COV = [
+        { key: 'mich', title: 'Michael acceptor in place', text: '3-Nitroacrylate is trapped in the site with C3 right next to Arg286. Arg286 still carries the proton it took from C3 (yellow H). Press ▶ to watch it react.' },
+        { key: 'mich', title: 'Aza-Michael addition', text: 'An N of Arg286 adds to C3 (conjugate addition; the guanidinium is drawn in the resonance form that puts the lone pair on that N). The C=C π electrons move into the C2–N bond and the N=O π electrons onto O, giving a <b>nitronate</b>. The attacking N is now sp³ N⁺ and still carries both of its H\'s.' },
+        { key: 'inter', title: 'Proton transfer to C2', text: 'The N⁺–H is acidic, and the nitronate carbon (C2) is basic. The C2=N π electrons take that proton (forming C2–H), the N–H electrons return to N as a lone pair, and an O⁻ lone pair re-forms N=O. <b>The proton Arg286 removed from C3 ends up on C2</b>; no H is lost.' },
+        { key: 'adduct', title: 'Covalent adduct', text: 'Arg286 is now joined to C3 by a <b>covalent C–N bond</b>. The active site is permanently blocked: <b>irreversible, mechanism-based ("suicide") inhibition</b>. More succinate cannot rescue the enzyme, so the cell loses this step of the citric acid cycle and of respiration.<div style="margin-top:.4rem;color:#9ca3af;font-size:.72rem">Schematic: in the crystal structure of the avian enzyme the adduct forms with the equivalent Arg297, and its exact chemistry is still debated.</div>' }
+    ];
+    const DEPART_TEXT = 'Fumarate leaves the site. FADH₂ is reoxidized to FAD (its electrons pass one at a time through the Fe–S clusters to ubiquinone) and Arg286 gives up its proton, so the enzyme is ready for the next molecule.';
     const STEPS = [
-        { until: 0.04, title: 'Free substrate', anti: 'Succinate dianion is free in solution. Rotation about C2–C3 is fast, so all conformers interconvert.', gauche: 'Succinate dianion is free in solution. Rotation about C2–C3 is fast, so all conformers interconvert.' },
-        { until: 0.27, title: 'Binding', anti: 'Succinate enters the active site. Side chains close in (induced fit): <b>Arg399</b> grips the C1 carboxylate with a salt bridge; <b>His354</b> and <b>Thr254</b> H-bond to the C4 carboxylate.', gauche: 'A <b>gauche</b> conformer enters the site. The C1 carboxylate reaches Arg399, but the C4 carboxylate points away from His354 and Thr254.' },
-        { until: 0.40, title: 'Michaelis complex (E·S)', anti: 'Binding at both ends holds succinate <b>extended</b> (carboxylates anti, 180°). That fixes the H on C2 facing FAD N5 and the H on C3 facing the base <b>anti-periplanar</b> (H–C–C–H = 180°).', gauche: 'The facing H\'s are still anti-periplanar, but the carboxylates are only 60° apart. The C4 carboxylate has <b>no H-bonds</b> to His354 / Thr254, so SDH does not hold this conformer.' },
-        { until: 0.62, title: 'Elimination begins', anti: 'The base pulls <b>H⁺</b> from C3 while C2 hands <b>H⁻</b> (hydride) to N5 of FAD. Both C–H bonds stretch together (dashed), E2-like.', gauche: 'Hypothetical: the same anti-periplanar H⁺/H⁻ removal, starting from the gauche conformer.' },
-        { until: 0.73, title: 'Transition state', anti: 'Both C–H bonds are half broken. The developing p orbitals on C2 and C3 are <b>parallel</b>, which is only possible because the two H\'s were anti-periplanar.', gauche: 'The p orbitals are parallel here too, but the carboxylates are now on the <b>same side</b> of the forming π bond.' },
-        { until: 0.96, title: 'π bond forms', anti: 'C2 and C3 rehybridise sp³ → sp². The substituents that stay swing into one plane; the carboxylates, anti in the complex, end up <b>trans</b>. The flavin is now FADH⁻ (− on N1).', gauche: 'C2 and C3 become sp². Because the carboxylates started gauche, they end up <b>cis</b>.' },
-        { until: 2.00, title: 'Products', anti: '<b>(E)-Fumarate</b> + FADH₂ (N5–H, then N1 protonated) + protonated base. Anti binding of the carboxylates makes the elimination stereospecific: no maleate forms.', gauche: '<b>(Z)-Maleate</b>: what a gauche-bound substrate would give. SDH never forms it, because its active site binds only the extended (anti) succinate.' }
+        { until: 0.04, key: 'free', title: 'Free substrate', anti: 'Succinate (the butanedioate dianion) is free in solution. Rotation about the C2–C3 σ bond is fast, so anti and gauche conformers interconvert.', gauche: 'Succinate (the butanedioate dianion) is free in solution. Rotation about the C2–C3 σ bond is fast, so anti and gauche conformers interconvert.' },
+        { until: 0.27, key: 'bind', title: 'Binding', anti: 'Succinate enters the active site and side chains close in (induced fit). <b>Arg399</b> forms a salt bridge to one carboxylate; <b>His354</b> and <b>Thr254</b> H-bond to the other. Gripping both ends locks the extended (anti) conformer.', gauche: 'A <b>gauche</b> conformer enters. One carboxylate reaches Arg399, but the other points away from His354 and Thr254, so SDH cannot hold this conformer.' },
+        { until: 0.40, key: 'es', title: 'Michaelis complex (E·S)', anti: 'With the carboxylates anti (180°), the C2–H aimed at N5 of FAD and the C3–H aimed at Arg286 are <b>anti-periplanar</b> (yellow, both in the plane of the page), the geometry an E2 elimination needs. The arrows show what happens next: Arg286\'s lone pair takes the C3–H proton, the C3–H electrons form the C2=C3 π bond, and the C2–H electrons carry H⁻ to N5 of FAD.', gauche: 'The facing H\'s are still anti-periplanar, but the carboxylates are only 60° apart and one has <b>no H-bonds</b>. SDH does not hold this conformer; the arrows show the hypothetical elimination.' },
+        { until: 0.62, key: 'arrows', title: 'Elimination: curved arrows', anti: 'The lone pair on Arg286 takes the C3–H proton. The C3–H σ electrons become the new C2=C3 π bond. The C2–H σ electrons leave with that H as <b>hydride (H⁻)</b> to N5 of FAD. The flavin absorbs the pair: the N5=C4a π electrons shift to C4a=C10a, and the C10a=N1 π electrons move onto N1.', gauche: 'The same anti-periplanar H⁺/H⁻ removal, starting from the gauche conformer.' },
+        { until: 0.73, key: 'ts', title: 'Transition state', anti: 'Both C–H bonds are half broken, both H···N bonds half formed, and the C2=C3 π bond half formed. The p orbitals developing on C2 and C3 are <b>parallel</b> only because the two H\'s were anti-periplanar. Charge builds on the flavin (δ− at N1) and the base (δ+). Whether the two H\'s really leave in one concerted step or the proton leaves first (a carbanion) is still debated.', gauche: 'The p orbitals are parallel here too, but the carboxylates are now on the <b>same side</b> of the forming π bond.' },
+        { until: 0.86, key: 'p1', title: 'π bond formed', anti: 'C2 and C3 are now sp². The carboxylates, anti in the complex, end up <b>trans</b>: (E)-fumarate. FAD has gained H⁻ and is the reduced anion <b>FADH⁻</b> (− on N1); Arg286 carries the proton as a guanidinium ion.', gauche: 'Because the carboxylates started gauche, they end up <b>cis</b>: (Z)-maleate. FAD is FADH⁻; Arg286 is protonated.' },
+        { until: 0.975, key: 'n1', title: 'FADH⁻ is protonated → FADH₂', anti: 'FADH⁻ is a base. N1 takes a proton from a nearby donor (H–A: water or an acidic group). The flavin is now <b>FADH₂</b>: overall it has gained 2 e⁻ and 2 H⁺ (H⁻ at N5, H⁺ at N1).', gauche: 'N1 of FADH⁻ takes a proton from a nearby donor (H–A), giving <b>FADH₂</b>.' },
+        { until: 2.00, key: 'prod', title: 'Products', anti: '<b>(E)-Fumarate</b> + <b>FADH₂</b> + protonated Arg286. Because SDH binds only the anti conformer, the anti elimination is stereospecific: no maleate forms.', gauche: '<b>(Z)-Maleate</b>: what a gauche-bound substrate would give. SDH never forms it, because its active site binds only the extended (anti) succinate.' }
     ];
 
     function update(dt) {
@@ -1404,7 +1702,7 @@
                 S[k].mesh.position.addScaledVector(OPEN_DIR, 26 * u); setAtomAlpha(S[k], 1 - smooth(0.55, 1, u));
             }
         }
-        if (st.inhib && inh.add > 0) setAtomAlpha(S.H3L, 1 - smooth(0.0, 0.35, inh.add));     // H⁺ released as Arg286 bonds
+        // (3-NPA) the proton Arg286 took from C3 is not lost: it stays on Arg286 and is later handed to C2 (see below)
 
         // induced fit: clamps and base move in as the substrate arrives
         // residues and FAD appear only as the substrate arrives: they fade in while swinging into place (induced fit)
@@ -1417,12 +1715,12 @@
         if (st.inhib && inh.add > 0) {         // Arg286 swings in so its N reaches bonding distance (1.47 Å) of C3
             const Nb0 = baseArg.Nb.base.clone().add(resOffset.base), c3 = S.C3.mesh.position;
             const tgt = c3.clone().addScaledVector(Nb0.clone().sub(c3).normalize(), 1.47);
-            resOffset.base.addScaledVector(tgt.sub(Nb0), smooth(0.1, 0.75, inh.add));
+            resOffset.base.addScaledVector(tgt.sub(Nb0), smooth(0.1, 0.45, inh.add));
         }
         for (const a of enzAtoms) { a.mesh.position.copy(a.base).add(resOffset[a.res]); setAtomAlpha(a, st.resEff); }
         if (st.inhib && inh.add > 0) {
             // C3 pyramidalises (sp² → sp³) as the N adds: its H bends away from the incoming N
-            const Nb = baseArg.Nb.mesh.position, k = smooth(0.1, 0.75, inh.add);
+            const Nb = baseArg.Nb.mesh.position, k = smooth(0.1, 0.45, inh.add);
             S.H3.mesh.position.addScaledVector(Nb.clone().sub(S.C3.mesh.position).normalize(), -0.35 * k);
             // the Arg286 side chain turns about the forming N–C3 bond to the orientation that best clears its neighbours
             const ax = S.C3.mesh.position.clone().sub(Nb).normalize(), baseAtoms = enzAtoms.filter(a => a.res === 'base');
@@ -1443,12 +1741,33 @@
             const q = new THREE.Quaternion().setFromAxisAngle(ax, inh.rot * deg * k);
             for (const b of baseAtoms) if (b !== baseArg.Nb) b.mesh.position.sub(Nb).applyQuaternion(q).add(Nb);
         }
-        if (st.inhib && inh.add > 0) {         // the N that bonds to C3 keeps one H, turned to the open side (trigonal around N)
-            const Nb = baseArg.Nb.mesh.position, uC = S.C3.mesh.position.clone().sub(Nb).normalize(), uZ = baseArg.CZ.mesh.position.clone().sub(Nb).normalize();
-            const hTo = Nb.clone().addScaledVector(uC.add(uZ).negate().normalize(), 1.01);
-            baseArg.hNb.mesh.position.lerp(hTo, smooth(0.1, 0.75, inh.add));
+        if (st.inhib && inh.add > 0) {
+            // Step 1 (add 0 → 0.5): aza-Michael addition. Arg286's N becomes sp³ (N⁺) carrying BOTH its H's: the original one
+            //   and the proton it took from C3. Step 2 (add 0.5 → 1): that proton moves from N⁺ to C2 (the nitronate carbon);
+            //   N returns to trigonal with one H.
+            const A_ = inh.add, Nb = baseArg.Nb.mesh.position;
+            const uC = S.C3.mesh.position.clone().sub(Nb).normalize(), uZ = baseArg.CZ.mesh.position.clone().sub(Nb).normalize();
+            const bis = uC.clone().add(uZ).negate().normalize(), nrm = new THREE.Vector3().crossVectors(uC, uZ).normalize();
+            const t1 = bis.clone().multiplyScalar(0.577).addScaledVector(nrm, 0.816).normalize(), t2 = bis.clone().multiplyScalar(0.577).addScaledVector(nrm, -0.816).normalize();
+            const c2 = S.C2.mesh.position;
+            let n2 = new THREE.Vector3().crossVectors(S.C1.mesh.position.clone().sub(c2), S.C3.mesh.position.clone().sub(c2)).normalize();
+            if (n2.dot(Nb.clone().sub(c2)) < 0) n2.negate();                       // the face of C2 on Arg286's side
+            const hC2 = c2.clone().addScaledVector(n2, 1.09);
+            const slot = Nb.clone().addScaledVector(t1, 1.01).distanceTo(hC2) < Nb.clone().addScaledVector(t2, 1.01).distanceTo(hC2) ? [t1, t2] : [t2, t1];
+            const kS = smooth(0.0, 0.25, A_), kT = smooth(0.55, 0.9, A_), kH = smooth(0.6, 0.9, A_);
+            const onN = Nb.clone().addScaledVector(uC.clone().lerp(slot[0], kS).normalize(), 1.01);   // swings out of the way, then rides on N
+            S.H3L.mesh.position.copy(onN).lerp(hC2, kT);
+            S.H2.mesh.position.addScaledVector(n2, -0.3 * kT);                    // C2 pyramidalises as it gains the H
+            const hInit = baseArg.hNb.mesh.position.clone().sub(Nb).normalize();
+            const dir = hInit.lerp(slot[1], kS).normalize().lerp(bis, kH).normalize();
+            baseArg.hNb.mesh.position.copy(Nb).addScaledVector(dir, 1.01);
         }
-        setAtomAlpha(fad.HN1, st.resEff * smooth(0.95, 0.99, p) * (inh.phase === 'depart' ? 1 - smooth(0.2, 0.6, inh.t / 3.2) : 1));
+        const kN1 = smooth(0.88, 0.97, p);                                    // FADH⁻ + H⁺ → FADH₂: a proton comes in to N1
+        setAtomAlpha(fad.HN1, st.resEff * smooth(0.86, 0.89, p) * (inh.phase === 'depart' ? 1 - smooth(0.2, 0.6, inh.t / 3.2) : 1));
+        { const n1 = fad.N1.mesh.position, out = fad.HN1.base.clone().sub(fad.N1.base).normalize();
+          fad.HN1.mesh.position.copy(n1).addScaledVector(out, lerp(4.2, 1.01, kN1));
+          const mv = kN1 > 0 && kN1 < 1 ? 1 : 0, pl = 0.6 + 0.4 * Math.sin(st.t * 6);
+          fad.HN1.mat.color.set(ELEM.H.c).lerp(YELLOW, 0.9 * mv); fad.HN1.mat.emissive.copy(YELLOW).multiplyScalar(0.7 * mv * pl); }
         fad.N5.mesh.position.addScaledVector(N5_UP, N5_RISE * smooth(0.12, 0.88, s));   // N5 pyramidalises as it takes H⁻
 
         // bond orders
@@ -1464,11 +1783,13 @@
         [bondHN5, bondHNb].forEach(b => b.look = { solid: after ? 1 : 0, dots: inWin ? 1 : 0 });
         bondPi.look = { solid: after ? 1 : 0, dots: inWin ? 1 : 0 };
         // covalent trapping (3-NP): the Arg286 N–C3 bond forms (dashed → solid) as the C=C π bond is used up (solid → dashed → gone)
-        const A = st.inhib ? inh.add : 0, aWin = A >= 0.2 && A <= 0.7;
-        bondAdduct.look = { solid: A > 0.7 ? 1 : 0, dots: aWin ? 1 : 0 };
-        if (A > 0) { bondPi.look = { solid: A < 0.2 ? 1 : 0, dots: aWin ? 1 : 0 }; bondHNb.look = { solid: A < 0.2 ? 1 : 0, dots: 0 }; }
+        const A = st.inhib ? inh.add : 0, aWin = A >= 0.15 && A <= 0.4, tWin = A >= 0.6 && A <= 0.85;
+        bondAdduct.look = { solid: A > 0.4 ? 1 : 0, dots: aWin ? 1 : 0 };                 // N–C3 forms
+        bondNitronate.look = { solid: A > 0.4 && A < 0.6 ? 1 : 0, dots: aWin || tWin ? 1 : 0 };   // C2=N (nitronate) forms, then goes
+        bondC2H3L.look = { solid: A > 0.85 ? 1 : 0, dots: tWin ? 1 : 0 };                   // C2–H forms
+        if (A > 0) { bondPi.look = { solid: A < 0.15 ? 1 : 0, dots: aWin ? 1 : 0 }; bondHNb.look = { solid: A < 0.6 ? 1 : 0, dots: tWin ? 1 : 0 }; }
         // once formed, the covalent bond turns red and glows (pulsing)
-        const red = st.inhib ? smooth(0.7, 0.85, A) : 0, pls = 0.5 + 0.5 * Math.sin(st.t * 5);
+        const red = st.inhib ? smooth(0.86, 0.97, A) : 0, pls = 0.5 + 0.5 * Math.sin(st.t * 5);
         bondAdduct.solidMat.color.set(0x9ca3af).lerp(new THREE.Color(0xff2b2b), red);
         bondAdduct.solidMat.emissive.setRGB(0.7 * red, 0.05 * red, 0.05 * red);
         adductHaze.forEach((g, i) => {
@@ -1479,7 +1800,7 @@
         });
         [S.H2L, S.H3L].forEach(a => { const top = s > 0.1; a.mat.depthTest = !top; a.mesh.renderOrder = top ? 61 : 0; });
         piOffsetAmt = 0.13 * smooth(0.20, 0.35, s);                       // the two C=C lines separate gradually as the π bond appears
-        fad.bondN1H.order = smooth(0.95, 0.99, p);
+        fad.bondN1H.look = { solid: kN1 > 0.75 ? 1 : 0, dots: kN1 > 0.35 && kN1 <= 0.75 ? 1 : 0 };
         enzBonds.forEach(b => b.vis = st.resEff);
         bondHN5.vis = 1; bondHNb.vis = 1;
         saltBridges.forEach(b => {
@@ -1578,33 +1899,28 @@
         }
         reactiveEl.style.opacity = gA.toFixed(3);
         reactiveEl.style.visibility = gA > 0.01 ? 'visible' : 'hidden';
-        reactiveEl.style.transform = `translate(${(window.innerWidth / 2).toFixed(1)}px, 22px) translate(-50%, 0)`;   // top centre, clear of the 3D labels
+        reactiveEl.style.transform = `translate(${(window.innerWidth / 2).toFixed(1)}px, 52px) translate(-50%, 0)`;   // top centre, clear of the 3D labels
 
-        // ---- info panel
-        const dc = Math.abs(dihedral(S.C1.mesh.position, S.C2.mesh.position, S.C3.mesh.position, S.C4.mesh.position));
-        const tag = s > 0.9 ? (dc > 150 ? ' (trans)' : ' (cis)') : dc > 165 ? ' (anti)' : Math.abs(dc - 60) < 12 ? ' (gauche)' : Math.abs(dc - 120) < 12 ? ' (eclipsed)' : '';
-        dihC.textContent = Math.round(dc) + '°' + tag;
-        dihC.style.color = dc > 150 ? '#4ade80' : dc < 75 ? '#fb923c' : '#e5e7eb';
-        if (s < 0.6) {
-            const dh = Math.abs(dihedral(S.H2L.mesh.position, S.C2.mesh.position, S.C3.mesh.position, S.H3L.mesh.position));
-            dihH.textContent = Math.round(dh) + '°' + (dh > 170 ? ' (anti-periplanar)' : '');
-            dihH.style.color = dh > 170 ? '#facc15' : '#e5e7eb';
-        } else { dihH.textContent = '— (H\'s transferred)'; dihH.style.color = '#9ca3af'; }
-        if (inh.phase === 'depart') {
-            stepTitle.textContent = 'Product release';
-            stepText.innerHTML = 'Fumarate leaves the site. FADH₂ is reoxidized (its electrons pass through the Fe–S clusters to ubiquinone) and Arg286 gives up its proton, so the enzyme is ready for the next molecule.';
-        } else if (st.inhib) {
+        // ---- mechanism panel (2D curved-arrow scheme for the current step)
+        let mTitle, mText, mKey;
+        if (inh.phase === 'depart') { mKey = 'depart'; mTitle = 'Product release'; mText = DEPART_TEXT; }
+        else if (st.inhib) {
             const step = STEPS_INH.find(x => p < x.until);
-            stepTitle.textContent = step.title;
-            stepText.innerHTML = step.until < 2 ? step.text : (inh.add < 0.15
-                ? '<b>3-Nitroacrylate</b> is trapped in the site, its β-carbon (C3) right next to the Arg286 guanidine.'
-                : 'Arg286 adds to C3 (β to the nitro group), forming a <b>covalent adduct</b> and releasing its H⁺. The active site is now permanently blocked: <b>irreversible, mechanism-based ("suicide") inhibition</b>. Adding more succinate cannot rescue it, so the cell loses this step of the citric acid cycle and of respiration.<div style="margin-top:.4rem;color:#9ca3af;font-size:.72rem">Schematic: in the crystal structure of the avian enzyme the adduct forms with the equivalent Arg297, and its exact chemistry is still debated.</div>');
+            const c = step.until < 2 ? step : (inh.add < 0.02 ? COV[0] : inh.add < 0.5 ? COV[1] : inh.add < 0.92 ? COV[2] : COV[3]);
+            mKey = 'npa-' + c.key; mTitle = c.title; mText = c.text;
+            if (inh.phase === 'ready') mText += '<div style="margin-top:.45rem;color:#4ade80;font-weight:700">Press PROCEED WITH IRREVERSIBLE INHIBITION.</div>';
         } else {
-        const step = STEPS.find(x => p < x.until);
-        stepTitle.textContent = step.title + (mode === 'gauche' && p > 0.04 ? ' — hypothetical' : '');
-        stepText.innerHTML = step[mode] + (Math.abs(p - BOUND_P) < 0.004 && !st.playing
-            ? '<div style="margin-top:.45rem;color:#4ade80;font-weight:700">Paused on the bound complex. Rotate and zoom to inspect the salt bridge, H-bonds and charges, then press ▶ to continue.</div>' : '');
+            const step = STEPS.find(x => p < x.until);
+            mKey = step.key; mTitle = step.title + (mode === 'gauche' && p > 0.04 ? ' (hypothetical)' : '');
+            mText = step[mode] + (Math.abs(p - BOUND_P) < 0.004 && !st.playing
+                ? '<div style="margin-top:.45rem;color:#4ade80;font-weight:700">Paused on the bound complex. Explore the 3D view, then press ▶.</div>' : '');
         }
+        if (stepTitle.textContent !== mTitle) stepTitle.textContent = mTitle;
+        let refit = false;
+        if (stepText.innerHTML !== mText) { stepText.innerHTML = mText; refit = true; }
+        const mk = mKey + '|' + (st.inhib ? 'anti' : mode);
+        if (mk !== lastMech) { lastMech = mk; mechEl.innerHTML = MECH.svg(mKey, st.inhib ? 'anti' : mode); refit = true; }
+        if (refit) fitMech();
         stepBox.classList.toggle('warn', mode === 'gauche' && p > 0.04);
         document.querySelectorAll('#ticks span').forEach((el, i) => {
             const v = sliderOf() / 1000, at = st.inhib ? [0, 0.25, 0.5, 0.75, 1][i] : [0, 0.34, 0.675, 1, 9][i];
@@ -1679,17 +1995,9 @@
     function applyInfoMode() {
         const on = st.inhib;
         if (on === infoInh) return; infoInh = on;
-        document.getElementById('rxn-svg').style.display = on ? 'none' : 'block';
-        document.getElementById('rxn-svg-npa').style.display = on ? 'block' : 'none';
-        document.getElementById('rxn-note').innerHTML = on
-            ? "Yellow H's: removed as in succinate oxidation (H⁻ to FAD, H⁺ to Arg286). Arg286 then adds to C3 of 3-nitroacrylate, forming a covalent adduct."
-            : "Yellow H's: the anti-periplanar pair removed (H⁻ to FAD, H⁺ to the base)";
         document.getElementById('info-sub').innerHTML = on
             ? 'Mechanism-based inactivation: 3-NPA → 3-nitroacrylate → covalent adduct with Arg286'
             : 'Enzymatic <i>anti</i>-elimination: succinate → fumarate (Complex II, FAD-dependent)';
-        document.getElementById('sub-row').textContent = on ? '3-Nitropropionate (⁻O₂C–CH₂–CH₂–NO₂)' : 'Succinate (⁻O₂C–CH₂–CH₂–CO₂⁻)';
-        document.getElementById('hplus-row').textContent = on ? 'Arg286 (then covalently bound)' : 'Arg286';
-        document.getElementById('dih-c-k').textContent = on ? 'O₂N–C2–C3–CO₂ dihedral:' : 'O₂C–C2–C3–CO₂ dihedral:';
         // slider: an extra step (3-nitroacrylate → covalent adduct) in inhibitor mode
         progress.max = 1000; progress.value = Math.round(sliderOf());
         const pos = on ? [0, 25, 50, 75, 100] : [0, 34, 67.5, 100, 100];
@@ -1700,9 +2008,7 @@
         document.getElementById('tk3').classList.toggle('end', !on);
         document.getElementById('tk4').style.display = on ? '' : 'none';
         document.querySelectorAll('.conf-sub').forEach(el => el.style.display = on ? 'none' : '');   // no fumarate/maleate subtext with 3-NPA
-        const pr = document.getElementById('prod-row');
-        if (on) { pr.innerHTML = '(<i>E</i>)-3-Nitroacrylate → Arg286 adduct'; pr.style.color = '#f87171'; }
-        else setModeText(st.mode);
+        if (!on) setModeText(st.mode);
     }
     function stepInhibitor(dt) {
         if (!st.inhib && inh.phase === null && !inh.dismissed && st.p >= 1 && st.mode === 'anti' && !st.playing) {
@@ -1715,7 +2021,7 @@
         if (inh.phase === 'bind' && !st.playing && Math.abs(st.p - BOUND_P) < 0.001) { inh.phase = 'ready'; showInhBtn('PROCEED WITH IRREVERSIBLE INHIBITION'); }
         if (inh.phase === 'react' && st.p >= 1) { inh.phase = 'oxidized'; inh.add = 0; inh.rot = null; setPlaying(false); }
         if (inh.phase === 'adduct' && inh.addPlaying) {
-            inh.add = Math.min(1, inh.add + dt / 4.0); progress.value = Math.round(sliderOf());
+            inh.add = Math.min(1, inh.add + dt / 7.0); progress.value = Math.round(sliderOf());
             if (inh.add >= 1) { inh.phase = 'done'; inh.addPlaying = false; playBtn.textContent = '▶'; showInhBtn('BACK TO SUCCINATE'); inh.idle = 1e9; }
         }
         // orange prompt + glowing play button while waiting to show the covalent step
@@ -1795,9 +2101,6 @@
     }
     function setModeText(m) {
         st.mode = m;
-        const pr = document.getElementById('prod-row');
-        pr.innerHTML = m === 'anti' ? '(<i>E</i>)-Fumarate' : '(<i>Z</i>)-Maleate <span style="font-weight:500">(not formed)</span>';
-        pr.style.color = m === 'anti' ? '#4ade80' : '#fb923c';
         reactiveEl.innerHTML = m === 'anti' ? 'REACTIVE CONFORMATION'
                                             : 'GAUCHE CONFORMER';
     }
