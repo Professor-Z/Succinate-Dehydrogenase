@@ -45,7 +45,7 @@
     #bg h3 { margin: 0.85rem 0 0.25rem; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: #c084fc; }
     #bg p { margin: 0 0 0.5rem; font-size: 0.8rem; line-height: 1.5; color: #e5e7eb; }
     #bg b { color: #fff; }
-    #bg .eq { margin: 0.2rem 0 0.5rem; padding: 0.45rem 0.55rem; border-radius: 0.45rem; background: rgba(15,23,42,0.7); border-left: 3px solid #a855f7;
+    #bg .eq { margin: 0.2rem 0 0.5rem; padding: 0.3rem 0.4rem; border-radius: 0.45rem; background: rgba(15,23,42,0.7); border-left: 3px solid #a855f7;
         font-size: 0.78rem; font-weight: 600; color: #f1f5f9; line-height: 1.4; }
     #bg .note { margin-top: 0.7rem; padding-top: 0.5rem; border-top: 1px solid #374151; font-size: 0.7rem; color: #94a3b8; line-height: 1.4; }
     #info h1 { margin: 0 0 0.1rem; font-size: 1.125rem; line-height: 1.25; font-weight: 700; color: #60a5fa; }
@@ -201,29 +201,22 @@
 <button class="drawer-tab" data-drawer="bg-drawer">BACKGROUND INFO</button>
 <div id="bg" class="glass-panel interactive">
     <h1>Succinate Dehydrogenase</h1>
-    <div class="sub">An enzyme-catalyzed anti elimination, seen through organic chemistry</div>
+    <div class="sub">An enzyme-catalyzed elimination seen through the lens of organic chemistry</div>
 
     <h3>The enzyme and where it works</h3>
     <p>An <b>enzyme</b> is a protein that catalyzes a reaction by binding its starting material (the <b>substrate</b>) in a pocket called the <b>active site</b>, where amino-acid side chains are positioned to stabilize the transition state. <b>Succinate dehydrogenase (SDH)</b> is the enzyme in this simulation. It sits in the inner membrane of the <b>mitochondrion</b>, the organelle that makes most of a cell's ATP (adenosine triphosphate, the cell's energy currency).</p>
     <p>SDH is the only enzyme that belongs to two central pathways at once. It is a step of the <b>citric acid cycle</b> (also called the tricarboxylic acid, TCA, or Krebs cycle), which oxidizes fuel molecules to CO₂. It is also <b>Complex II</b> of the <b>electron transport chain (ETC)</b>, the series of membrane proteins that passes electrons to O₂ and uses the energy to drive ATP synthesis.</p>
 
     <h3>The reaction: a dehydrogenation</h3>
-    <div class="eq">⁻O₂C–CH₂–CH₂–CO₂⁻ &nbsp;+&nbsp; FAD &nbsp;→&nbsp; <i>(E)</i>-⁻O₂C–CH=CH–CO₂⁻ &nbsp;+&nbsp; FADH₂</div>
+    <div class="eq" id="bg-eq"></div>
     <p>At cellular pH (about 7.4) both carboxylic acids are deprotonated, so the substrate is the <b>succinate</b> dianion (butanedioate) and the product is <b>fumarate</b>, (<i>E</i>)-butenedioate. Two hydrogens are removed from the adjacent CH₂ groups (C2 and C3) to make a C=C bond. That is an <b>oxidation</b>: the carbon skeleton loses two electrons and two protons.</p>
-    <p>You can read it as an <b>E2 elimination</b> in which the "leaving group" is a <b>hydride ion (H⁻)</b>. A base removes H⁺ from one carbon, the C–H electrons become the new π bond, and the other carbon's H departs with its bonding pair as H⁻. Hydride is a terrible leaving group on its own, so it needs a strong hydride acceptor waiting to receive it, much as the quinone DDQ (2,3-dichloro-5,6-dicyano-1,4-benzoquinone) takes hydride when it dehydrogenates organic compounds in the lab.</p>
+    <p>You can read it as an <b>E2 elimination</b> in which the "leaving group" is a <b>hydride ion (H⁻)</b>. A base removes H⁺ from one carbon, the C–H electrons become the new π bond, and the other carbon's H departs with its bonding pair as H⁻. Hydride is a terrible leaving group on its own, so it needs a strong hydride acceptor waiting to receive it. Enter FAD!</p>
 
     <h3>FAD: the hydride acceptor</h3>
     <p><b>FAD (flavin adenine dinucleotide)</b> is a <b>coenzyme</b>: a small organic molecule bound to the enzyme that does chemistry the amino acids cannot. Its reactive part is a fused tricyclic heterocycle, the <b>isoalloxazine</b> ring (the flavin); the rest (R) is a ribityl chain linked through phosphates to adenosine. In SDH the flavin is also covalently attached to the protein through a histidine.</p>
     <p>The flavin's N5=C4a and C10a=N1 bonds form a conjugated, electron-poor system. Hydride adds at <b>N5</b>, and the electron pair is pushed through the ring onto <b>N1</b>, giving the reduced anion FADH⁻. Protonation at N1 then gives <b>FADH₂</b> (1,5-dihydroflavin): two electrons and two protons gained in all.</p>
-    <p>Why FAD rather than NAD⁺ (nicotinamide adenine dinucleotide), the hydride acceptor used to oxidize alcohols to carbonyls? Removing H₂ from an unactivated CH₂–CH₂ unit is a weak driving force. NAD⁺ is too poor an oxidant for it (standard reduction potential about −0.32 V at pH 7), while protein-bound FAD sits near 0 V, close to the fumarate/succinate couple (about +0.03 V), so the transfer is thermodynamically feasible.</p>
-
-    <h3>Where the electrons go next</h3>
-    <p>FADH₂ does not leave the enzyme. It is reoxidized in place by passing its electrons, one at a time, through a chain of <b>iron–sulfur (Fe–S) clusters</b> inside SDH to <b>ubiquinone</b> (coenzyme Q, abbreviated Q), a lipid-soluble quinone in the membrane. The reduced form, ubiquinol (QH₂), carries the electrons on to Complex III of the ETC. The regenerated FAD is ready for the next succinate.</p>
-
     <h3>Stereochemistry: why only fumarate</h3>
     <p>Succinate can rotate freely about C2–C3, but the active site grips both carboxylates: <b>Arg399</b> forms a salt bridge (ion pair plus H-bonds) to one, and <b>His354</b> and <b>Thr254</b> H-bond to the other. Only the extended, <b>anti</b> conformer fits. In that conformer the C2–H pointing at FAD's N5 and the C3–H pointing at the base, <b>Arg286</b>, are <b>anti-periplanar</b>, the same geometry an E2 reaction prefers because it lets the two breaking C–H orbitals become parallel p orbitals in the new π bond. The carboxylates, anti in the bound substrate, end up <b>trans</b>: (<i>E</i>)-fumarate. The <i>Z</i> isomer, maleate, is never formed. Isotope-labeling experiments confirmed the anti (trans) removal of hydrogens.</p>
-    <p>Two details differ from a lab E2. The base is an arginine, whose side chain (a guanidine) is normally protonated in water (pKₐ about 12–13); the enzyme's environment holds it in the neutral, basic form. And whether the two H's leave in one concerted step or the C–H proton leaves first (a carbanion, E1cB-like pathway) is still debated; the simulation shows the concerted picture.</p>
-
     <h3>Inhibitors</h3>
     <p><b>Malonate</b> (⁻O₂C–CH₂–CO₂⁻) resembles succinate and binds the same site but cannot be oxidized: a classic <b>competitive</b>, reversible inhibitor. <b>3-Nitropropionate</b> (3-NPA, the anion of 3-nitropropionic acid), a natural toxin, also mimics succinate, but SDH oxidizes it to a nitroalkene that traps the enzyme covalently. That <b>irreversible, mechanism-based</b> inhibition is shown after the main reaction.</p>
 
@@ -475,7 +468,7 @@ window.MECH = (() => {
         for (const a of o.arrows || []) {
             if (a === 'base') arr(pol(g('Nb'), 180, 10), pol(g('H3L'), 15, 7), -10);
             if (a === 'pi') arr(mid(g('C3'), g('H3L'), 0.5), [g('C2')[0] + 4, (g('C2')[1] + g('C3')[1]) / 2], -9);
-            if (a === 'hyd') arr(mid(g('C2'), g('H2L'), 0.5), pol(g('fN5'), 20, 6.5), 14);     // ends on N5 itself
+            if (a === 'hyd') arr(mid(g('C2'), g('H2L'), 0.5), pol(g('fN5'), 20, 4.6), 14);     // tip touches the N5 glyph
             if (a === 'fad') {
                 arr(mid(F.N5, F.C4a, 0.45), mid(F.C4a, F.C10a, 0.5), -7);
                 arr(mid(F.C10a, F.N1, 0.5), pol(F.N1, 120, 9), -7);
@@ -590,9 +583,65 @@ window.MECH = (() => {
         }
         return '';
     }
-    return { svg, scene, render };
+    // ---------------- overall equation (bond-line, colour-coded) for BACKGROUND INFO ----------------
+    function eq() {
+        const at = {}, bonds = [], marks = [], arrows = [];
+        const A = (id, p, t = null, opt = {}) => (at[id] = Object.assign({ p, t, c: t ? (COL[t[0]] || COL.g) : null }, opt));
+        const B = (a, b, type = 's', opt = {}) => bonds.push(Object.assign({ a, b, type }, opt));
+        const T = (p, s, opt = {}) => marks.push(Object.assign({ k: 'tx', p, s }, opt));
+        const diacid = (k, x0, y0, ene) => {                    // ⁻O₂C–C2–C3–CO₂⁻ zig-zag
+            const C1 = [x0, y0], C2 = pol(C1, 30), C3 = pol(C2, 330), C4 = pol(C3, 30);
+            [['C1', C1], ['C2', C2], ['C3', C3], ['C4', C4]].forEach(([n, p]) => A(k + n, p));
+            // trigonal carboxylate carbons: the three bonds on each are 120° apart
+            A(k + 'Oa', pol(C1, 150), 'O'); A(k + 'Ob', pol(C1, 270), 'O');     // C1: C2 at 30°
+            A(k + 'Oc', pol(C4, 90), 'O');  A(k + 'Od', pol(C4, 330), 'O');     // C4: C3 at 210°
+            B(k + 'C1', k + 'Oa', 'd'); B(k + 'C1', k + 'Ob'); B(k + 'C4', k + 'Oc', 'd'); B(k + 'C4', k + 'Od');
+            B(k + 'C1', k + 'C2'); B(k + 'C3', k + 'C4');
+            marks.push({ k: 'fc', p: pol(at[k + 'Ob'].p, 0, 11), sign: -1 }, { k: 'fc', p: pol(at[k + 'Od'].p, 290, 11), sign: -1 });
+            if (ene) B(k + 'C2', k + 'C3', 'd', { side: 1 });
+            else {
+                B(k + 'C2', k + 'C3');
+                A(k + 'H2', pol(C2, 90, 19), 'H', { c: COL.HL }); B(k + 'C2', k + 'H2');
+                A(k + 'H3', pol(C3, 270, 19), 'H', { c: COL.HL }); B(k + 'C3', k + 'H3');
+            }
+            return (C1[0] + C4[0]) / 2;
+        };
+        const flavin = (k, bx, by, red) => {                    // isoalloxazine ring, drawn horizontally (benzene ring left, N5 on top)
+            const r = 90, P = (c, a, l = L) => pol(c, a + r, l), hx = (c, a) => P(c, a, R);
+            const Bc = [bx, by], Ac = P(Bc, 90, R * Math.sqrt(3)), Cc = P(Bc, 270, R * Math.sqrt(3));
+            const F = { N5: hx(Bc, 0), C5a: hx(Bc, 60), C9a: hx(Bc, 120), N10: hx(Bc, 180), C10a: hx(Bc, 240), C4a: hx(Bc, 300),
+                        C6: hx(Ac, 0), C7: hx(Ac, 60), C8: hx(Ac, 120), C9: hx(Ac, 180), C4: hx(Cc, 0), N1: hx(Cc, 180), C2: hx(Cc, 240), N3: hx(Cc, 300) };
+            for (const n in F) A(k + n, F[n], /^N/.test(n) ? 'N' : null);
+            A(k + 'O4', P(F.C4, 0), 'O'); A(k + 'O2', P(F.C2, 240), 'O'); A(k + 'HN3', P(F.N3, 300, 19), 'H');
+            A(k + 'M7', P(F.C7, 60)); A(k + 'M8', P(F.C8, 120)); A(k + 'R', P(F.N10, 180), 'R', { c: '#cbd5e1' });
+            const b = (x, y, t = 's', o = {}) => B(k + x, k + y, t, o);
+            b('C5a', 'C6', 'd', { in: Ac }); b('C6', 'C7'); b('C7', 'C8', 'd', { in: Ac }); b('C8', 'C9'); b('C9', 'C9a', 'd', { in: Ac }); b('C9a', 'C5a');
+            b('N5', 'C5a'); b('C9a', 'N10'); b('N10', 'C10a'); b('C4a', 'C4'); b('C4', 'N3'); b('N3', 'C2'); b('C2', 'N1');
+            b('C4', 'O4', 'd'); b('C2', 'O2', 'd'); b('N3', 'HN3'); b('C7', 'M7'); b('C8', 'M8'); b('N10', 'R');
+            if (red) {
+                b('C4a', 'N5'); b('C10a', 'C4a', 'd', { in: Bc }); b('N1', 'C10a');
+                A(k + 'H5', P(F.N5, 0, 19), 'H', { c: COL.HL }); b('N5', 'H5');
+                A(k + 'H1', P(F.N1, 180, 19), 'H', { c: COL.HL }); b('N1', 'H1');
+            } else { b('C4a', 'N5', 'd', { in: Bc }); b('C10a', 'C4a'); b('N1', 'C10a', 'd', { in: Cc }); }
+        };
+        const plus = (x, y) => T([x, y + 5], '+', { size: 16, w: 700, c: '#e5e7eb' });
+        const name = (x, y, s, c) => T([x, y], s, { size: 10.5, w: 800, c });
+        // row 1: succinate + FAD
+        const s1 = diacid('s', 20, 64, false); name(s1, 122, 'succinate', '#e5e7eb');
+        plus(124, 56); flavin('f', 208, 58, false); name(208, 122, 'FAD', COL.fad);
+        // row 2: (E)-fumarate + FADH₂
+        const s2 = diacid('p', 20, 218, true); name(s2, 276, '(E)-fumarate', '#4ade80');
+        plus(124, 210); flavin('g', 208, 212, true); name(208, 276, 'FADH₂', COL.fad);
+        const svg = render({ at, bonds, arrows, marks }, '-8 0 298 284');
+        const arrow = `<line x1="150" y1="132" x2="150" y2="150" stroke="#e5e7eb" stroke-width="1.6"/>` +
+            `<polygon points="150,158 145.5,149 154.5,149" fill="#e5e7eb"/>` +
+            `<text x="161" y="149" fill="#c084fc" font-size="10" font-weight="800">SDH</text>`;
+        return svg.replace('</svg>', arrow + '</svg>');
+    }
+    return { svg, scene, render, eq };
 })();
 
+{ const e = document.getElementById('bg-eq'); if (e) e.innerHTML = MECH.eq(); }
 </script>
 <script>
 (() => {
@@ -1479,10 +1528,17 @@ window.MECH = (() => {
     // =====================================================================
     const arrows = [];
     const CAMDIR = VIEWS.front.dir.clone();
-    function makeArrow(from, to, sign, bulge) {
-        const d = to.clone().sub(from); const du = d.clone().normalize();
-        const h = new THREE.Vector3().crossVectors(CAMDIR, du).normalize().multiplyScalar(sign);   // bulge in the screen plane of the default view
-        const ctrl = from.clone().add(to).multiplyScalar(0.5).addScaledVector(h, bulge);
+    function makeArrow(from, to, sign, bulge, surfR) {
+        const ctrlFor = (end) => {
+            const du = end.clone().sub(from).normalize();
+            const h = new THREE.Vector3().crossVectors(CAMDIR, du).normalize().multiplyScalar(sign);   // bulge in the screen plane of the default view
+            return from.clone().add(end).multiplyScalar(0.5).addScaledVector(h, bulge);
+        };
+        let ctrl = ctrlFor(to);
+        if (surfR) {        // 'to' is an atom centre: end the arrow (cone tip) exactly on that atom's surface, along its approach
+            const c = to.clone();
+            for (let k = 0; k < 4; k++) { to = c.clone().addScaledVector(ctrl.clone().sub(c).normalize(), surfR); ctrl = ctrlFor(to); }
+        }
         const curve = new THREE.QuadraticBezierCurve3(from, ctrl, to);
         const L = curve.getLength(), headLen = 0.42, tEnd = 1 - headLen / L;
         const pts = []; for (let i = 0; i <= 40; i++) pts.push(curve.getPoint(i / 40 * tEnd));
@@ -1500,8 +1556,8 @@ window.MECH = (() => {
         makeArrow(NBpos.clone().addScaledVector(dL3, -0.35), H3.clone().addScaledVector(dL3, 0.3), 1, 0.8);
         // 2) C3–H σ bond → C2–C3 (new π bond)
         makeArrow(C3.clone().lerp(H3, 0.5), C2.clone().lerp(C3, 0.5), -1, 0.75);
-        // 3) C2–H σ bond → H–N5 (hydride to FAD)
-        makeArrow(C2.clone().lerp(H2, 0.5), H2.clone().lerp(N5pos, 0.5), -1, 0.8);
+        // 3) C2–H σ bond → N5 of FAD (hydride transfer); the tip touches the N5 sphere
+        makeArrow(C2.clone().lerp(H2, 0.5), fad.N5.base.clone(), -1, 0.8, fad.N5.r * 0.97);
     })();
 
     // =====================================================================
