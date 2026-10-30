@@ -692,7 +692,10 @@ window.MECH = (() => {
     const VIEWS = {
         front:    { target: V(0, 0, 0), dir: V(-0.777, 0.035, 0.629).normalize(), dist: 29 },   // clamps above/below, FAD left, base right; all four C2/C3 H's visible
         newman:   { target: V(0, 0, 0), dir: V(-1, 0, 0.001).normalize(), dist: 25 },          // looking down C2 → C3
-        overview: { target: V(...SDH.ovTarget), dir: V(...SDH.ovDir).normalize(),   // side-on to the membrane, slightly from the matrix side
+        overview: { target: (() => {           // aim a little below the enzyme so it sits higher on screen, clear of the slider
+                        const f = V(...SDH.ovDir).normalize().negate(), r = new THREE.Vector3().crossVectors(f, V(0, 1, 0)).normalize();
+                        return V(...SDH.ovTarget).addScaledVector(new THREE.Vector3().crossVectors(r, f), -20); })(),
+                    dir: V(...SDH.ovDir).normalize(),   // side-on to the membrane, slightly from the matrix side
                     get dist() { return window.innerWidth < window.innerHeight ? 270 : 220; } }
     };
     camera.position.copy(VIEWS.overview.target).addScaledVector(VIEWS.overview.dir, VIEWS.overview.dist);
@@ -1897,8 +1900,8 @@ window.MECH = (() => {
         const gG = 1 - smooth(0.25, 0.31, p);
         const cen = V(0, 0, 0); for (const k in S) cen.add(S[k].mesh.position); cen.multiplyScalar(1 / Object.keys(S).length);
         const rad = 1 - smooth(0.04, 0.22, p);                              // extra radiance while it is still out in the matrix
-        subHalo.position.copy(cen); subHalo.material.opacity = gG * Math.min(1, (0.3 + 0.2 * pulse) * (1 + 1.6 * rad)); subHalo.scale.setScalar((10 + 1.5 * pulse) * (1 + 0.6 * rad));
-        subCorona.position.copy(cen); subCorona.material.opacity = gG * rad * (0.45 + 0.2 * pulse); subCorona.scale.setScalar(24 + 4 * pulse);
+        subHalo.position.copy(cen); subHalo.material.opacity = gG * Math.min(1, (0.3 + 0.2 * pulse) * (1 + 1.6 * rad)); subHalo.scale.setScalar((10 + 1.5 * pulse) * (1 + 0.6 * rad) * (1 + 3 * rad));   // 4× larger while free in the matrix
+        subCorona.position.copy(cen); subCorona.material.opacity = gG * rad * (0.45 + 0.2 * pulse); subCorona.scale.setScalar((24 + 4 * pulse) * (1 + 3 * rad));
         Object.keys(S).forEach((k, i) => { const g = atomGlows[i]; g.position.copy(S[k].mesh.position);
             g.material.opacity = gG * Math.min(1, (0.55 + 0.3 * pulse) * (1 + 0.8 * rad)); g.scale.setScalar((S[k].el === 'H' ? 1.2 : 1.7) * (1 + 0.15 * pulse) * (1 + 0.5 * rad)); });
         lblSucc.el.style.fontSize = lerp(15, 26, rad).toFixed(1) + 'px';
@@ -1951,7 +1954,7 @@ window.MECH = (() => {
         // ---- labels
         lblProd.el.innerHTML = st.inhib ? '3-NITROACRYLATE' : mode === 'anti' ? '(<i>E</i>)-FUMARATE' : '(<i>Z</i>)-MALEATE';
         lblProd.el.className = 'flab prod' + (mode === 'anti' ? '' : ' z');
-        lblSucc.el.innerHTML = st.inhib ? '3-NPA' : 'SUCCINATE';
+        lblSucc.el.innerHTML = st.inhib ? '3-NPA' : 'SUCCINATE DEHYDROGENASE';
         let maxY = -1e9, minY = 1e9, cx = 0, nC = 0;
         for (const k in S) { const sc = toScreen(S[k].mesh.position); maxY = Math.max(maxY, sc.y); minY = Math.min(minY, sc.y); cx += sc.x; nC++; }
         cx /= nC;
@@ -2148,7 +2151,20 @@ window.MECH = (() => {
     });
     window.addEventListener('keydown', (ev) => {
         if (ev.code === 'Space' && ev.target.tagName !== 'INPUT') { ev.preventDefault(); playBtn.click(); }
+        if (ev.code in panKeys && ev.target.tagName !== 'INPUT') { ev.preventDefault(); panKeys[ev.code] = true; camAnim = null; }
     });
+    // arrow keys slide the whole model across the screen (the camera and its pivot move together)
+    const panKeys = { ArrowLeft: false, ArrowRight: false, ArrowUp: false, ArrowDown: false };
+    window.addEventListener('keyup', (ev) => { if (ev.code in panKeys) panKeys[ev.code] = false; });
+    window.addEventListener('blur', () => { for (const k in panKeys) panKeys[k] = false; });
+    function stepPan(dt) {
+        const x = (panKeys.ArrowRight ? 1 : 0) - (panKeys.ArrowLeft ? 1 : 0), y = (panKeys.ArrowUp ? 1 : 0) - (panKeys.ArrowDown ? 1 : 0);
+        if (!x && !y) return;
+        const off = camera.position.clone().sub(controls.target), speed = 0.45 * off.length() * dt;   // ~half the view width per second
+        const f = off.clone().negate().normalize(), r = new THREE.Vector3().crossVectors(f, camera.up).normalize(), u = new THREE.Vector3().crossVectors(r, f);
+        const mv = r.multiplyScalar(-x * speed).addScaledVector(u, -y * speed);   // the model moves with the arrow, so the camera moves the other way
+        controls.target.add(mv); camera.position.add(mv);
+    }
 
     const btnAnti = document.getElementById('mode-anti'), btnGauche = document.getElementById('mode-gauche');
     let lastShade = null;
@@ -2281,6 +2297,7 @@ window.MECH = (() => {
             if (st.p >= 1) setPlaying(false);
         }
         stepCamera(dt);
+        stepPan(dt);
         stepAlpha(dt);
         stepInhibitor(dt);
         applyInfoMode();
